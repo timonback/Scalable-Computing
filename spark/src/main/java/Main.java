@@ -30,26 +30,9 @@ public class Main {
                 new JavaSparkContext(spark.sparkContext()).parallelize(Arrays.asList(response));
         Dataset<Row> df = spark.read().json(anotherPeopleRDD);
 
-        //Dataset<Row> df = spark.read().json("src/main/resources/articles.json");
-        //df.printSchema();
-        //df.show();
-
         Dataset<Row> articles = df.select(org.apache.spark.sql.functions.explode(df.col("articles")).as("a"));
-        //articles.printSchema();
-        articles.select("a.author", "a.title", "a.description", "a.publishedAt").show();
-
-        /* articles.foreach(new ForeachFunction<Row>() {
-            @Override
-            public void call(Row row) throws Exception {
-                Row realrow = (Row) row.get(0); // for some reason nested?
-                String author = realrow.getString(0);
-                String title = realrow.getString(1);
-                String description = realrow.getString(2);
-                String publishedAt = realrow.getString(3);
-
-
-            }
-        }); */
+        // articles.printSchema();
+        // articles.select("a.author", "a.title", "a.description", "a.publishedAt").show();
 
         JavaSparkContext jsc = new JavaSparkContext(spark.sparkContext());
 
