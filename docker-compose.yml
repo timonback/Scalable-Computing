@@ -1,0 +1,7 @@
+
+
+mongo:
+  image: mongo
+  ports:
+    - "27012:27012"
+
