@@ -24,6 +24,9 @@ object Recommender extends App {
         }
       }
     }
+
+    // TODO: replace with dbconnect
+
     val ratings = sc.parallelize(dinit)
 
     // TODO: Learn best rank and lamda
@@ -51,7 +54,7 @@ object Recommender extends App {
     }.mean()
     println("MSE: "+MSE)
 
-    // Generate and Store recommendations
+    // Generate recommendations
     var aUserArticle :Array[Rating] = Array()
     for( user <- 1 to 10){
       for( article <- 1 to 100){
@@ -72,12 +75,16 @@ object Recommender extends App {
 
     val kinds = predictionsTotal.groupBy(_._1)
     kinds.foreach(x => {
-      val recommandations = x._2.toList.sortBy(_._3).takeRight(5)
-      val userid = recommandations.head._1
-      var recommandationstring : String = "Top 5 recommandations for user "+userid+":"
-      recommandations.foreach(x =>  recommandationstring += " " + x._2)
-      println(recommandationstring)
+      val recommendations = x._2.toList.sortBy(_._3).takeRight(5)
+      val userid = recommendations.head._1
+      var recommendationstring : String = "Top 5 recommendations for user "+userid+":"
+      recommendations.foreach(x =>  recommendationstring += " " + x._2)
+      println(recommendationstring)
     })
+
+    // Store recommendations
+
+    // TODO
 
     sc.stop()
   }
