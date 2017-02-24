@@ -1,7 +1,19 @@
+version: '2'
 
+services:
+  visualization:
+    image: timonback/newsforyou-visualization:1.0
+    ports:
+      - "9000:9000"
+    environment:
+      - MONGO_ADDRESS=mongoPrimaryNode
+    depends_on:
+      - mongo
+    links:
+      - "mongo:mongoPrimaryNode"
 
-mongo:
-  image: mongo
-  ports:
-    - "27017:27017"
+  mongo:
+    image: mongo
+    ports:
+      - "27017:27017"
 
