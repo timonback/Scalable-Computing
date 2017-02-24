@@ -1,0 +1,27 @@
+@(articles: List[models.Article], activeSort: String)(implicit session: play.api.mvc.Session)
+
+@main("Available articles", "article") {
+    <div class="row">
+        <div class="span12">
+            <div id="sort">
+                <span>Sort by:</span>
+                <ul class="nav nav-pills">
+                    <li @if(activeSort == "title"){class="active"}><a href="@routes.Articles.index?sort=title">title</a></li>
+                    <li @if(activeSort == "-title"){class="active"}><a href="@routes.Articles.index?sort=-title">-title</a></li>
+                    <li @if(activeSort == "url"){class="active"}><a href="@routes.Articles.index?sort=url">url</a></li>
+                    <li @if(activeSort == "-url"){class="active"}><a href="@routes.Articles.index?sort=-url">-url</a></li>
+                    <li @if(activeSort == "none"){class="active"}><a href="@routes.Articles.index">none</a></li>
+                </ul>
+            </div>
+            @if(articles.isEmpty) {
+                <p>No articles available yet.</p>
+            } else {
+                <ul>
+                @articles.map { article =>
+                    <li>@article.id <a href="@article.url">@article.title</a></li>
+                }
+                </ul>
+            }
+        </div>
+    </div>
+}

@@ -1,0 +1,34 @@
+@(users: List[models.User], activeSort: String)(implicit session: play.api.mvc.Session)
+
+@main("Available users", "user") {
+    <div class="row">
+        <div class="span12">
+            <div id="sort">
+                <span>Sort by:</span>
+                <ul class="nav nav-pills">
+                    <li @if(activeSort == "username"){class="active"}><a href="@routes.Users.index?sort=username">username</a></li>
+                    <li @if(activeSort == "-username"){class="active"}><a href="@routes.Users.index?sort=-username">-username</a></li>
+                    <li @if(activeSort == "email"){class="active"}><a href="@routes.Users.index?sort=email">email</a></li>
+                    <li @if(activeSort == "-email"){class="active"}><a href="@routes.Users.index?sort=-email">-email</a></li>
+                    <li @if(activeSort == "creationDate"){class="active"}><a href="@routes.Users.index?sort=creationDate">creation</a></li>
+                    <li @if(activeSort == "-creationDate"){class="active"}><a href="@routes.Users.index?sort=-creationDate">-creation</a></li>
+                    <li @if(activeSort == "updateDate"){class="active"}><a href="@routes.Users.index?sort=updateDate">update</a></li>
+                    <li @if(activeSort == "-updateDate"){class="active"}><a href="@routes.Users.index?sort=-updateDate">-update</a></li>
+                    <li @if(activeSort == "none"){class="active"}><a href="@routes.Users.index">none</a></li>
+                </ul>
+            </div>
+            @if(users.isEmpty) {
+                <p>No users available yet.</p>
+            } else {
+                <ul>
+                @users.map { user =>
+                    <li><a href="@routes.Users.showEditForm(user.id.toString)">@user.username</a> <em>by @user.email</em> (last modified : @user.updateDate.map(u => org.joda.time.format.DateTimeFormat.forPattern("MMM dd, yyyy").print(u)).orElse(Some("n/a"))) - <a href="@routes.Users.delete(user.id.toString)" class="delete">delete</a></li>
+                }
+                </ul>
+            }
+            <div>
+                <a href="@routes.Users.showCreationForm">Create</a>
+            </div>
+        </div>
+    </div>
+}
