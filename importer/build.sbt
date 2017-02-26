@@ -1,6 +1,12 @@
-name := "spark_scala"
+name := "importer"
 
 version := "1.0"
 
-scalaVersion := "2.12.1"
-    
+scalaVersion := "2.11.7"
+
+libraryDependencies ++= Seq(
+  "org.apache.spark" %% "spark-core" % "2.1.0",
+  "org.apache.spark" %% "spark-sql" % "2.1.0",
+  "org.scalaj" %% "scalaj-http" % "2.3.0",
+  "org.mongodb.spark" %% "mongo-spark-connector" % "2.0.0"
+)
