@@ -1,7 +1,7 @@
-import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.mllib.recommendation.ALS
-import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
 import org.apache.spark.mllib.recommendation.Rating
+import com.mongodb.spark.MongoSpark
+import org.apache.spark.sql.{DataFrame, SQLContext, SparkSession}
 
 // [Inspired by]
 // http://spark.apache.org/docs/latest/mllib-collaborative-filtering.html
@@ -11,10 +11,16 @@ object Recommender extends App {
 
   override
   def main(args: Array[String]) = {
-    val conf = new SparkConf().setAppName("CollaborativeFiltering").setMaster("local[*]")
-    val sc = new SparkContext(conf)
+    val ss = SparkSession
+      .builder()
+      .master("local")
+      .appName("recommender")
+      .config("spark.mongodb.input.uri", "mongodb://127.0.0.1:27017/recommender.likes")
+      .config("spark.mongodb.output.uri", "mongodb://127.0.0.1:27017/recommender.recommendations")
+      .getOrCreate()
+    val sc = ss.sparkContext
 
-    // Load the data
+    // Load random data:
     var dinit : Array[Rating] = Array()
     for( user <- 1 to 10){
       for( article <- 1 to 100){
@@ -24,10 +30,11 @@ object Recommender extends App {
         }
       }
     }
-
-    // TODO: replace with dbconnect
-
     val ratings = sc.parallelize(dinit)
+
+    // Or load from database
+    //case class UserRating(userid: Int, article: Int, rating: Int)
+    //val ratings = MongoSpark.load(sc).toDF[Rating]
 
     // TODO: Learn best rank and lamda
 
@@ -73,18 +80,23 @@ object Recommender extends App {
         (user, product, rate)
       }
 
-    val kinds = predictionsTotal.groupBy(_._1)
-    kinds.foreach(x => {
+    // Generate recommendations
+    val users = predictionsTotal.groupBy(_._1)
+    val recommendations = users.map(x => {
       val recommendations = x._2.toList.sortBy(_._3).takeRight(5)
-      val userid = recommendations.head._1
-      var recommendationstring : String = "Top 5 recommendations for user "+userid+":"
-      recommendations.foreach(x =>  recommendationstring += " " + x._2)
-      println(recommendationstring)
+      (recommendations.head._1,recommendations.map(x => x._2))
+    })
+
+    // Print recommendations
+    recommendations.foreach(x=>{
+      println(x)
     })
 
     // Store recommendations
-
-    // TODO
+    val df : DataFrame =  ss.createDataFrame( recommendations )
+    val lpDF = df.withColumnRenamed("_1", "userid").withColumnRenamed("_2", "recommendations")
+    lpDF.printSchema()
+    MongoSpark.write(lpDF).option("collection", "recommendations").mode("overwrite").save()
 
     sc.stop()
   }
