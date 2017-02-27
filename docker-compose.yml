@@ -2,7 +2,9 @@ version: '2'
 
 services:
   importer:
-    image: timonback/newsforyou-visualization:1.0
+    image: timonback/newsforyou-importer:1.0
+    environment:
+      - MONGO_ADDRESS=mongoPrimaryNode
     depends_on:
       - mongo
     links:
@@ -10,6 +12,8 @@ services:
 
   recommendator:
     image: timonback/newsforyou-recommendator:1.0
+    environment:
+      - MONGO_ADDRESS=mongoPrimaryNode
     depends_on:
       - mongo
     links:

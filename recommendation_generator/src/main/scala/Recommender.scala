@@ -11,12 +11,17 @@ object Recommender extends App {
 
   override
   def main(args: Array[String]) = {
+    val dbAddress = sys.env.get("MONGO_ADDRESS").getOrElse("localhost")
+    val dbPort = sys.env.get("MONGO_PORT").getOrElse("27017").toInt
+    val dbKeySpace = sys.env.get("MONGO_KEYSPACE").getOrElse("newsForYou")
+
+
     val ss = SparkSession
       .builder()
       .master("local")
       .appName("recommender")
-      .config("spark.mongodb.input.uri", "mongodb://127.0.0.1:27017/newsForYou.ratings")
-      .config("spark.mongodb.output.uri", "mongodb://127.0.0.1:27017/newsForYou.recommendations")
+      .config("spark.mongodb.input.uri", "mongodb://"+dbAddress+":"+dbPort+"/"+dbKeySpace+".ratings")
+      .config("spark.mongodb.output.uri", "mongodb://"+dbAddress+":"+dbPort+"/"+dbKeySpace+".recommendations")
       .getOrCreate()
     val sc = ss.sparkContext
 

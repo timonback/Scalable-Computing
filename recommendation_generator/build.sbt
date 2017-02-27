@@ -5,6 +5,7 @@ version := "1.0"
 
 lazy val `importer` = (project in file("."))
   .enablePlugins(DockerPlugin)
+  .enablePlugins(JavaAppPackaging)
 
 scalaVersion := "2.11.7"
 
