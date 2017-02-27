@@ -15,8 +15,8 @@ object Recommender extends App {
       .builder()
       .master("local")
       .appName("recommender")
-      .config("spark.mongodb.input.uri", "mongodb://127.0.0.1:27017/recommender.likes")
-      .config("spark.mongodb.output.uri", "mongodb://127.0.0.1:27017/recommender.recommendations")
+      .config("spark.mongodb.input.uri", "mongodb://127.0.0.1:27017/newsForYou.ratings")
+      .config("spark.mongodb.output.uri", "mongodb://127.0.0.1:27017/newsForYou.recommendations")
       .getOrCreate()
     val sc = ss.sparkContext
 

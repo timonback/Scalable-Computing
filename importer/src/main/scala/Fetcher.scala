@@ -10,8 +10,8 @@ object Fetcher {
       .builder()
       .master("local")
       .appName("fetcher")
-      .config("spark.mongodb.input.uri", "mongodb://172.17.0.2/test.myCollection")
-      .config("spark.mongodb.output.uri", "mongodb://172.17.0.2/test.myCollection")
+      .config("spark.mongodb.input.uri", "mongodb://172.17.0.2/newsForYou.articles")
+      .config("spark.mongodb.output.uri", "mongodb://172.17.0.2/newsForYou.articles")
       .getOrCreate()
 
     // val response: HttpResponse[String] = Http("https://api.nytimes.com/svc/archive/v1/2016/1.json").param("api-key", "6abaec279f9d4c4dad5459690c7b4563").asString
