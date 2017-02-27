@@ -1,6 +1,21 @@
 version: '2'
 
 services:
+  importer:
+    image: timonback/newsforyou-visualization:1.0
+    depends_on:
+      - mongo
+    links:
+      - "mongo:mongoPrimaryNode"
+
+  recommendator:
+    image: timonback/newsforyou-recommendator:1.0
+    depends_on:
+      - mongo
+    links:
+      - "mongo:mongoPrimaryNode"
+
+
   visualization:
     image: timonback/newsforyou-visualization:1.0
     ports:

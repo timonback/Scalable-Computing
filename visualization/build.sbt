@@ -1,14 +1,13 @@
 name := "newsForYou-visualization"
 dockerRepository := Some("timonback")
 
-
 version := "1.0"
 
 lazy val `visualization` = (project in file("."))
   .enablePlugins(PlayScala)
   .enablePlugins(DockerPlugin)
 
-scalaVersion := "2.11.1"
+scalaVersion := "2.11.7"
 
 unmanagedResourceDirectories in Test <+=  baseDirectory ( _ /"target/web/public/test" )
 

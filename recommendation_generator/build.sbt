@@ -1,8 +1,12 @@
-name := "recommendation_generator"
+name := "newsforyou-recommendator"
+dockerRepository := Some("timonback")
 
 version := "1.0"
 
-scalaVersion := "2.11.8"
+lazy val `importer` = (project in file("."))
+  .enablePlugins(DockerPlugin)
+
+scalaVersion := "2.11.7"
 
 val sparkVersion = "2.1.0"
 

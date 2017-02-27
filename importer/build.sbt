@@ -1,6 +1,10 @@
-name := "importer"
+name := "newsforyou-importer"
+dockerRepository := Some("timonback")
 
 version := "1.0"
+
+lazy val `importer` = (project in file("."))
+  .enablePlugins(DockerPlugin)
 
 scalaVersion := "2.11.7"
 

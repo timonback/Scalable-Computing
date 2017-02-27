@@ -16,3 +16,7 @@ db.users.find()
 db.articles.find()
 db.ratings.find()
 
+## Compile docker images
+sbt compile (only first time to get the sources)
+sbt docker:publishLocal or sbt docker:publish
+
