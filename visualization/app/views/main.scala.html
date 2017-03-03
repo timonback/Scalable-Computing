@@ -1,0 +1,71 @@
+@(title: String, tab: String = "", scripts: Html = Html(""))(content: Html)(implicit session: play.api.mvc.Session)
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+            <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+        <title>@title</title>
+
+        <script src="@routes.Assets.at("javascripts/jquery-3.1.1.min.js")" type="text/javascript"></script>
+            <!-- Bootstrap -->
+        <link rel="stylesheet" media="screen" href="@routes.Assets.at("stylesheets/bootstrap.css")">
+        <link rel="stylesheet" media="screen" href="@routes.Assets.at("stylesheets/main.css")">
+        <link rel="shortcut icon" type="image/png" href="@routes.Assets.at("images/favicon.png")">
+    </head>
+    <body>
+            <!-- Fixed navbar -->
+        <nav class="navbar navbar-default navbar-fixed-top">
+            <div class="container">
+                <div class="navbar-header">
+                    <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand" href="/">NewsForYou</a>
+                </div>
+                <div id="navbar" class="navbar-collapse collapse">
+                    <ul class="nav navbar-nav">
+                        <li class=@("active".when(tab == "index"))><a href="/">Home</a></li>
+                        <li class=@("active".when(tab == "user"))><a href="/user">Users</a></li>
+                        <li class=@("active".when(tab == "article"))><a href="/article">Articles</a></li>
+                        <li class=@("active".when(tab == "rating"))><a href="/rating">Ratings</a></li>
+                    </ul>
+                    <ul class="nav navbar-nav navbar-right">
+                    @if( session.get("username").isEmpty ) {
+                        <li class=@("active".when(tab == "login"))><a href="/login">Login</a></li>
+                    } else {
+                        <li><a href="#">Hello @session.get("username").get</a></li>
+                        <li><a href="/logout">Logout</a></li>
+                    }
+                    </ul>
+                </div><!--/.nav-collapse -->
+            </div>
+        </nav>
+
+        <div id="content" class="container">
+            <div class="row">
+                <div class="col-md-12">
+                    <h1>@title</h1>
+                </div>
+            </div>
+            @content
+        </div> <!-- /container -->
+
+        <script src="@routes.Assets.at("javascripts/jquery.json.min.js")" type="text/javascript"></script>
+        <script src="@routes.Assets.at("javascripts/jquery.simple.websocket.js")" type="text/javascript"></script>
+        <script src="@routes.Assets.at("javascripts/bootstrap.js")" type="text/javascript"></script>
+
+        @scripts
+
+            <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+            <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+            <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+        <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+        <![endif]-->
+    </body>
+</html>

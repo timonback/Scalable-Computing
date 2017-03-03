@@ -1,0 +1,38 @@
+version: '2'
+
+services:
+  importer:
+    image: timonback/newsforyou-importer:1.0
+    environment:
+      - MONGO_ADDRESS=mongo_1
+    depends_on:
+      - mongo
+    links:
+      - mongo
+
+  recommendator:
+    image: timonback/newsforyou-recommendator:1.0
+    environment:
+      - MONGO_ADDRESS=mongo_1
+    depends_on:
+      - mongo
+    links:
+      - mongo
+
+
+  visualization:
+    image: timonback/newsforyou-visualization:1.0
+    ports:
+      - "9000:9000"
+    environment:
+      - MONGO_ADDRESS=mongo_1
+    depends_on:
+      - mongo
+    links:
+      - mongo
+
+  mongo:
+    image: mongo
+    ports:
+      - "27017:27017"
+
