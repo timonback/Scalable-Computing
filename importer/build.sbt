@@ -1,7 +1,7 @@
 name := "newsforyou-importer"
 dockerRepository := Some("timonback")
 
-version := "default"
+version := "latest"
 
 lazy val `importer` = (project in file("."))
   .enablePlugins(DockerPlugin)
