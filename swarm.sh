@@ -34,16 +34,19 @@ docker service create --replicas 2 --network services --endpoint-mode dnsrr --mo
 #docker exec -it *container-name* hostname -i
 
 #Add visualization service
-docker service create --name visualization -p 9000:9000 -e MONGO_ADDRESS=mongo --replicas 1 --network services timonback/newsforyou-visualization:latest
+docker service create --name visualization -p 9000:9000 -e MONGO_ADDRESS=mongo --replicas 1 --network services timonback/newsforyou-visualization
 
 #Add spark master
-docker service create --name spark-master --hostname spark-master -p 7077:7077 -p 8080:8080--replicas 1 --network services singularities/spark:latest start-spark master
+docker service create --name spark-master --hostname spark-master -p 7077:7077 -p 8080:8080--replicas 1 --network services singularities/spark start-spark master
 
 #Add spark workers
-docker service create --name spark-worker --hostname spark-worker --replicas 2 --network services singularities/spark:latest start-spark worker spark-master
+docker service create --name spark-worker --hostname spark-worker --replicas 2 --network services singularities/spark start-spark worker spark-master
 
-#Add spark task submitter (every 1min at the moment)
-docker service create --name spark-task-submitter --replicas 1 --network services --restart-delay 1m singularities/spark:latest spark-submit --class org.apache.spark.examples.SparkPi --master spark://spark-master:7077 /usr/local/spark-2.1.0/examples/jars/spark-examples_2.11-2.1.0.jar 10
+#Add spark task submitter (1min waiting inbetween runs) - example
+#docker service create --name spark-task-submitter --replicas 1 --network services --restart-delay 1m singularities/spark spark-submit --class org.apache.spark.examples.SparkPi --master spark://spark-master:7077 /usr/local/spark-2.1.0/examples/jars/spark-examples_2.11-2.1.0.jar 10
+
+#Add spark task submitter (1min waiting inbetween runs) - recommendation
+docker service create --name spark-recommender-submitter -e SPARK_ADDRESS=spark-master --replicas 1 --network services --restart-delay 1m timonback/newsforyou-recommendator
 
 
 
