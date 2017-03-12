@@ -1,11 +1,15 @@
 # Group-11_Timo-Smit_Timon-Back_Remi-Brandt
 
+This project uses docker swarm for orchestration management.
+
 ## Start-up
 
-curl -L "https://github.com/docker/compose/releases/download/1.11.1/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-chmod +x /usr/local/bin/docker-compose
+For the master node:
+./swarm.sh
 
-docker-compose up -d
+On all other nodes:
+./swarm_join.sh
+(Change HOST_IP with your master IP, also access to the docker-tokens file has to be granted)
 
 
 ## Data inspection in mongo
@@ -16,7 +20,7 @@ db.users.find()
 db.articles.find()
 db.ratings.find()
 
-## Compile docker images
+## Compile docker images (images are on hub.docker.com and tryed to keep up to date)
 sbt compile (only first time to get the sources)
-sbt docker:publishLocal or sbt docker:publish
+sbt docker:publishLocal
 
