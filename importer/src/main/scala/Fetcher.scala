@@ -35,7 +35,14 @@ object Fetcher {
       val df: DataFrame = spark.read.json(rdd)
       val articles: DataFrame = df.select(org.apache.spark.sql.functions.explode(df.col("response.docs")).as("articles"))
 
-      MongoSpark.write(articles).option("collection", "articles").mode("append").save()
+      val count = articles.count().toInt
+      val countStored = (count * 0.75).toInt
+      val countStream = count - countStored
+      val storedArticles = articles.limit(countStored)
+      val streamArticles = articles.limit(countStream)
+
+      MongoSpark.write(storedArticles).option("collection", "articles").mode("append").save()
+      MongoSpark.write(streamArticles).option("collection", "stream").mode("append").save()
 
       // DEBUG
       // val articlesIn = MongoSpark.load(spark).select("articles")
