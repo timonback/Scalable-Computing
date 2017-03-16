@@ -6,6 +6,7 @@ import org.apache.spark.mllib.linalg.distributed.{BlockMatrix, CoordinateMatrix,
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.mllib.linalg.{DenseMatrix, DenseVector, Vector}
 
+
 case class ALSModel (userFactors: RDD[(Int,Array[Double])], articleFactors: RDD[(Int,Array[Double])])
 case class Rating (user:Int, article:Int, rating:Double)
 
@@ -27,6 +28,7 @@ object Recommender extends App{
     println("Spark expected at: " + sparkUrl)
     println("Mongo expected at: " + mongoUrl)
 
+
     val ss = SparkSession
       .builder()
       .master(sparkUrl)
@@ -35,6 +37,12 @@ object Recommender extends App{
       .config("spark.mongodb.output.uri", mongoUrl+".recommendations")
       .getOrCreate()
     sc = ss.sparkContext
+
+    var jarFile = sys.env.get("SPARK_JAR").getOrElse("")
+    println("At jar file to spark: " + jarFile)
+    if(jarFile.nonEmpty) {
+      sc.addJar(jarFile)
+    }
 
     // Load Rating Data
     var ratings : Array[Rating] = Array()
