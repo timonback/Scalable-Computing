@@ -18,17 +18,36 @@ object Fetcher {
       .config("spark.mongodb.output.uri", "mongodb://"+dbAddress+":"+dbPort+"/"+dbKeySpace+".articles")
       .getOrCreate()
 
-    // val response: HttpResponse[String] = Http("https://api.nytimes.com/svc/archive/v1/2016/1.json").param("api-key", "6abaec279f9d4c4dad5459690c7b4563").asString
-    val response: HttpResponse[String] = Http("https://newsapi.org/v1/articles").param("source", "techcrunch").param("apikey", "919447fbe85f4ad09e7ee0b868efdbd4").asString
+    val importApiKey = sys.env.get("IMPORT_API_KEY").getOrElse("6abaec279f9d4c4dad5459690c7b4563")
 
-    val rdd: RDD[String] = spark.sparkContext.makeRDD(response.body :: Nil)
+    val importStartYear = sys.env.get("IMPORT_START_YEAR").getOrElse("2017").toInt
+    val importStartMonth = sys.env.get("IMPORT_START_MONTH").getOrElse("3").toInt
 
-    val df: DataFrame = spark.read.json(rdd)
+    var year = importStartYear
+    var month = importStartMonth
+    var httpResponse: HttpResponse[String] = null
 
-    val articles: DataFrame = df.select(org.apache.spark.sql.functions.explode(df.col("articles")).as("a"))
+    do {
+      httpResponse = Http("https://api.nytimes.com/svc/archive/v1/" + year + "/" + month + ".json").param("api-key", importApiKey).asString
 
-    // df.printSchema()
+      val rdd: RDD[String] = spark.sparkContext.makeRDD(httpResponse.body :: Nil)
 
-    MongoSpark.write(articles).option("collection", "articles").mode("overwrite").save()
+      val df: DataFrame = spark.read.json(rdd)
+      val articles: DataFrame = df.select(org.apache.spark.sql.functions.explode(df.col("response.docs")).as("articles"))
+
+      MongoSpark.write(articles).option("collection", "articles").mode("append").save()
+
+      // DEBUG
+      // val articlesIn = MongoSpark.load(spark).select("articles")
+      // println(articlesIn.select("articles.web_url").count() + " articles currently in collection.")
+
+      month -= 1
+
+      if (month == 0) {
+        year -= 1
+        month = 12
+      }
+    }
+    while (httpResponse.code == 200)
   }
 }
