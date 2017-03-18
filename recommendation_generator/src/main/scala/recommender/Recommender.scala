@@ -28,6 +28,7 @@ object Recommender extends App{
     var sparkUrl = "spark://"+sparkAddress+":"+sparkPort
 
     // Temporary:
+    //sparkUrl = "local"
 
     val mongoUrl = "mongodb://"+dbAddress+":"+dbPort+"/"+dbKeySpace
 
@@ -75,14 +76,14 @@ object Recommender extends App{
     val recommendations = recommendArticles(10, model)
 
     // Store recommendations
-    val df : DataFrame =  ss.createDataFrame( recommendations )
-    val lpDF = df.withColumnRenamed("_1", "userid").withColumnRenamed("_2", "recommendations")
-    lpDF.printSchema()
-    MongoSpark.write(lpDF).option("collection", "recommendations").mode("overwrite").save()
+    storeRecommendations(ss,recommendations)
 
     // Generate recommendations for anonymous user
-    // TODO
-    // var recommendations = recommendArticlesForNewUser(10, null, model)
+    var newRatingsRDD = ratingsRDD
+    var newRecommendations = recommendArticlesForNewUsers(newRatingsRDD, 10 , 10, 1.5, model, 10)
+
+    // Store new recommendations
+    storeRecommendations(ss,newRecommendations)
 
     sc.stop()
   }
@@ -94,14 +95,14 @@ object Recommender extends App{
 
     // Learn Model
     for (i <- 0 until numIterations) {
-      userFactors = alsStep(ratings, numIterations, numLatentFactors, regularization, articleFactors, true)
-      articleFactors = alsStep(ratings, numIterations, numLatentFactors,  regularization, userFactors, false)
+      userFactors = alsStep(ratings, numLatentFactors, regularization, articleFactors, true)
+      articleFactors = alsStep(ratings,  numLatentFactors,  regularization, userFactors, false)
     }
 
     ALSModel(userFactors, articleFactors)
   }
 
-  def alsStep(ratings: RDD[Rating], numIterations: Int, numLatentFactors : Int, regularization: Double, factors:RDD[(Int, Array[Double])], firstStage:Boolean) : RDD[(Int, Array[Double])] = {
+  def alsStep(ratings: RDD[Rating],  numLatentFactors : Int, regularization: Double, factors:RDD[(Int, Array[Double])], firstStage:Boolean) : RDD[(Int, Array[Double])] = {
     var ratingsBy : RDD[(Int, Rating)] = null
     if(firstStage){
       ratingsBy = ratings.keyBy(_.user)
@@ -154,6 +155,13 @@ object Recommender extends App{
       .map(a=>a._2)
 
     summedDotProducts
+  }
+
+  def storeRecommendations(ss: SparkSession,recommendations : RDD[(Int,Array[Int])]) = {
+    val df : DataFrame =  ss.createDataFrame( recommendations )
+    val lpDF = df.withColumnRenamed("_1", "userid").withColumnRenamed("_2", "recommendations")
+    lpDF.printSchema()
+    MongoSpark.write(lpDF).option("collection", "recommendations").mode("overwrite").save()
   }
 
   def dotSelfTransposeSelf(factors : RDD[(Int,(Array[Double],Rating) )], firstStage:Boolean) : RDD[(Int,Array[Array[Double]])] = {
@@ -219,8 +227,18 @@ object Recommender extends App{
     lengths.map(a=>getLargestN(a.zipWithIndex,number)).zipWithIndex().map(a=>(a._2.toInt,a._1))
   }
 
-  def recommendArticlesForNewUser(number: Int, userRatings: RDD[Rating], model: ALSModel): RDD[(Int, Array[Int])] = {
-    null
+  def recommendArticlesForNewUsers(ratings: RDD[Rating], numIterations: Int, numLatentFactors : Int, regularization: Double, model: ALSModel,number :Int): RDD[(Int, Array[Int])] = {
+    // Implements ALS fold-in to compute user factors and recommendations for new user ratings.
+
+    // Initialize User Factors
+    var userFactors: RDD[(Int, Array[Double])] = null
+    // Learn Model
+    for (i <- 0 until numIterations) {
+      userFactors = alsStep(ratings, numLatentFactors, regularization, model.articleFactors, true)
+    }
+    var newModel = ALSModel(userFactors, model.articleFactors)
+    // Recommend Articles
+    recommendArticles(number, newModel)
   }
 
   def getLargestN(array: Array[(Double,Int)],number:Int) : Array[Int] = {
