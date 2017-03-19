@@ -45,9 +45,9 @@ object Recommender extends App{
       .getOrCreate()
     sc = ss.sparkContext
 
-    var jarFile = sys.env.get("SPARK_JAR").getOrElse("")
-    println("At jar file to spark: " + jarFile)
-    if(jarFile.nonEmpty) {
+    var jarFileEnv = sys.env.get("SPARK_JAR").getOrElse("")
+    println("Add jar file(s) to spark: " + jarFileEnv)
+    for(jarFile <- jarFileEnv.split(",")) {
       sc.addJar(jarFile)
     }
 
