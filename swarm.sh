@@ -46,7 +46,7 @@ docker service create --name spark-worker --hostname spark-worker --replicas 2 -
 #docker service create --name spark-task-submitter --replicas 1 --network services --restart-delay 1m singularities/spark spark-submit --class org.apache.spark.examples.SparkPi --master spark://spark-master:7077 /usr/local/spark-2.1.0/examples/jars/spark-examples_2.11-2.1.0.jar 10
 
 #Add spark task submitter (1min waiting inbetween runs) - recommendation
-docker service create --name spark-recommender-submitter -e MONGO_ADDRESS=mongo -e SPARK_ADDRESS=spark-master -e SPARK_JAR=/opt/docker/lib/newsforyou-recommendator.newsforyou-recommendator-latest.jar,/opt/docker/lib/org.mongodb.spark.mongo-spark-connector_2.11-2.0.0.jar,/opt/docker/lib/org.mongodb.mongo-java-driver-3.2.2.jar --replicas 1 --network services --restart-delay 1m timonback/newsforyou-recommendator
+docker service create --name spark-recommender-submitter -e MONGO_ADDRESS=mongo -e SPARK_ADDRESS=spark-master -e SPARK_JAR=/opt/docker/lib/newsforyou-recommendator.newsforyou-recommendator-latest.jar,/opt/docker/lib/org.mongodb.spark.mongo-spark-connector_2.11-2.0.0.jar,/opt/docker/lib/org.mongodb.mongo-java-driver-3.2.2.jar -e USE_DUMMY_DATA=true --replicas 1 --network services --restart-delay 1m timonback/newsforyou-recommendator
 
 
 

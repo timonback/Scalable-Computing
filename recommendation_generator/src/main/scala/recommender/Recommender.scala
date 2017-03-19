@@ -25,6 +25,8 @@ object Recommender extends App{
     val dbPort = sys.env.get("MONGO_PORT").getOrElse("27017").toInt
     val dbKeySpace = sys.env.get("MONGO_KEYSPACE").getOrElse("newsForYou")
 
+    val useDummyDataOpt = sys.env.get("USE_DUMMY_DATA")
+
     var sparkUrl = "spark://"+sparkAddress+":"+sparkPort
 
     // Temporary:
@@ -51,23 +53,27 @@ object Recommender extends App{
       sc.addJar(jarFile)
     }
 
-    var ratingsRDD : RDD[Rating]=  null
-
-    // Load Random Rating Data
-    var ratings : Array[Rating] = Array()
-    for( user <- 0 to 200-1){
-      for( article <- 0 to 100-1){
-        val r = scala.util.Random
-        if(r.nextInt(100) >= 80) {
-          ratings +:= Rating(user,article,1.0)
+    var ratingsRDD : RDD[Rating] =  null
+    if(useDummyDataOpt.isEmpty) {
+      // Or load from db
+      println("Loading rating data from DB")
+      var temp = MongoSpark.load(sc).toDF.rdd
+      ratingsRDD = temp.map(row => Rating(row.getInt(0), row.getInt(1), row.getDouble(2)))
+    } else {
+      // Load Random Rating Data
+      println("Generating dummy rating data")
+      var ratings : Array[Rating] = Array()
+      for( user <- 0 to 200-1){
+        for( article <- 0 to 100-1){
+          val r = scala.util.Random
+          if(r.nextInt(100) >= 80) {
+            ratings +:= Rating(user,article,1.0)
+          }
         }
       }
+      ratingsRDD = sc.parallelize(ratings)
     }
-    ratingsRDD = sc.parallelize(ratings)
 
-    // Or load from db
-    var temp = MongoSpark.load(sc).toDF.rdd
-    ratingsRDD = temp.map(row => Rating(row.getInt(0), row.getInt(1), row.getDouble(2)))
 
     // Learn Model
     val model : ALSModel = learnModel(ratingsRDD,2,10,200,100,1.5)
