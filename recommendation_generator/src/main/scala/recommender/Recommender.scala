@@ -45,16 +45,16 @@ object Recommender extends App{
       .getOrCreate()
     sc = ss.sparkContext
 
-   
+
 	var jarFileEnv = sys.env.get("SPARK_JAR").getOrElse("")
 	println("Add jar file(s) to spark: " + jarFileEnv)
 	for(jarFile <- jarFileEnv.split(",")) {
 	sc.addJar(jarFile)
 	}
-
+  
 
     var ratingsRDD : RDD[Rating] =  null
-    if(useDummyDataOpt.isEmpty) { 
+    if(useDummyDataOpt.isEmpty) {
       // Or load from db
       println("Loading rating data from DB")
       var temp = MongoSpark.load(sc).toDF.rdd
@@ -63,20 +63,21 @@ object Recommender extends App{
       // Load Random Rating Data
       println("Generating dummy rating data")
       var ratings : Array[Rating] = Array()
-      for( user <- 0 to 300-1){
-        for( article <- 0 to 100-1){
+      for( user <- 1 to 278-1){
+        for( article <- 1 to 134-1){
           val r = scala.util.Random
           if(r.nextInt(100) >= 50) {
             ratings +:= Rating(user,article,r.nextInt(1000)*.1)
           }
         }
       }
+
       ratingsRDD = sc.parallelize(ratings)
     }
 
     // Learn Model
-    val numIterations = 3
-    val numLatentFactors = 10
+    val numIterations = 12
+    val numLatentFactors = 7
     val numArticles = ratingsRDD.groupBy(_.article).map(a=>a._1).max()
     val regularization = 0.01
     val numPredictions = 10
@@ -160,11 +161,9 @@ object Recommender extends App{
       individualDotProducts = factors.map({ a => (a._2._2.article, a._2._1.map({ b => b * a._2._2.rating })) }).keyBy(_._1)
     }
 
-    val summedDotProducts = individualDotProducts.reduceByKey((a,b) => (a._1, (a._2, b._2)
+    individualDotProducts.reduceByKey((a,b) => (a._1, (a._2, b._2)
       .zipped.map(_ + _)))
       .map(a=>a._2)
-
-    summedDotProducts
   }
 
   def storeRecommendations(ss: SparkSession,recommendations : RDD[(Int,Array[Int])]) = {
@@ -181,12 +180,11 @@ object Recommender extends App{
     }else{
       individualDotProducts = factors.map({ a => (a._2._2.article, a._2._1.map({ b => a._2._1.map({ c => c * b }) })) }).keyBy(_._1)
     }
-    var summedDotProducts = individualDotProducts.reduceByKey((a,b) => (a._1, (a._2, b._2)
+
+    individualDotProducts.reduceByKey((a,b) => (a._1, (a._2, b._2)
       .zipped.map((c: Array[Double], d: Array[Double]) => (c, d)
       .zipped.map(_ + _)) ))
       .map(a=>a._2)
-
-    summedDotProducts
   }
 
   def identity(lf : Int,r : Double) : Array[Array[Double]] = {
@@ -208,9 +206,7 @@ object Recommender extends App{
 
   def inverse(mat: DenseMatrix): DenseMatrix = {
     var dm  = new breeze.linalg.DenseMatrix[Double](mat.numRows,mat.numCols,mat.values)
-    if(det(dm) != 0.0){ // TODO: Verify Correctness of reasoning
-      dm = inv(dm)
-    }
+    dm = inv(dm)
     new DenseMatrix(dm.rows,dm.cols,dm.data)
   }
 
@@ -278,8 +274,8 @@ object Recommender extends App{
   def vectorsToBlockMatrix(array : RDD[(Int,Array[Double])]) : BlockMatrix = {
     val entries = sc.parallelize(array.zipWithIndex.map({case (a:(Int,Array[Double]),x:Long) => a._2.zipWithIndex.map({ case (e:Double,y:Int) => MatrixEntry(x,y,e)})}).reduce(_++_))
 
-    val rows = array.collect().length
-    val cols = array.collect()(0)._2.length
+    val rows = array.collect().length+1
+    val cols = array.collect()(0)._2.length+1
 
     val coordMat : CoordinateMatrix = new CoordinateMatrix(entries,rows,cols)
     coordMat.toBlockMatrix()
