@@ -29,9 +29,6 @@ object Recommender extends App{
 
     var sparkUrl = "spark://"+sparkAddress+":"+sparkPort
 
-    // TEMP
-    //sparkUrl = "local"
-
     val mongoUrl = "mongodb://"+dbAddress+":"+dbPort+"/"+dbKeySpace
 
     println("Spark expected at: " + sparkUrl)
@@ -48,12 +45,12 @@ object Recommender extends App{
     sc = ss.sparkContext
 
 
-    var jarFileEnv = sys.env.get("SPARK_JAR").getOrElse("")
-    println("Add jar file(s) to spark: " + jarFileEnv)
-    for(jarFile <- jarFileEnv.split(",")) {
-      sc.addJar(jarFile)
-    }
-   
+	var jarFileEnv = sys.env.get("SPARK_JAR").getOrElse("")
+	println("Add jar file(s) to spark: " + jarFileEnv)
+	for(jarFile <- jarFileEnv.split(",")) {
+	sc.addJar(jarFile)
+	}
+    
 
     var ratingsRDD : RDD[Rating] =  null
     if(useDummyDataOpt.isEmpty) { 
@@ -68,7 +65,7 @@ object Recommender extends App{
       for( user <- 0 to 200-1){
         for( article <- 0 to 100-1){
           val r = scala.util.Random
-          if(r.nextInt(100) >= 50) {
+          if(r.nextInt(100) >= 90) {
             ratings +:= Rating(user,article,r.nextInt(1000)*.1)
           }
         }
@@ -77,7 +74,7 @@ object Recommender extends App{
     }
 
     // Learn Model
-    val numIterations = 4
+    val numIterations = 2
     val numLatentFactors = 5
     val articleIndices = ratingsRDD.groupBy(_.article).map(a=>a._1).collect()
     val regularization = 0.01
@@ -210,7 +207,9 @@ object Recommender extends App{
 
   def inverse(mat: DenseMatrix): DenseMatrix = {
     var dm  = new breeze.linalg.DenseMatrix[Double](mat.numRows,mat.numCols,mat.values)
-    dm = inv(dm)
+    if(det(dm) != 0.0){ // TODO: Verify Correctness of reasoning
+      dm = inv(dm)
+    }
     new DenseMatrix(dm.rows,dm.cols,dm.data)
   }
 
