@@ -29,6 +29,7 @@ object Recommender extends App{
 
     var sparkUrl = "spark://"+sparkAddress+":"+sparkPort
 
+
     val mongoUrl = "mongodb://"+dbAddress+":"+dbPort+"/"+dbKeySpace
 
     println("Spark expected at: " + sparkUrl)
@@ -44,16 +45,14 @@ object Recommender extends App{
       .getOrCreate()
     sc = ss.sparkContext
 
-
 	var jarFileEnv = sys.env.get("SPARK_JAR").getOrElse("")
 	println("Add jar file(s) to spark: " + jarFileEnv)
 	for(jarFile <- jarFileEnv.split(",")) {
 	sc.addJar(jarFile)
 	}
-    
 
     var ratingsRDD : RDD[Rating] =  null
-    if(useDummyDataOpt.isEmpty) { 
+    if(useDummyDataOpt.isEmpty) {
       // Or load from db
       println("Loading rating data from DB")
       var temp = MongoSpark.load(sc).toDF.rdd
@@ -257,8 +256,20 @@ object Recommender extends App{
   def getLargestN(array: Array[(Double,Int)],number:Int) : Array[Int] = {
     var buffer : Array[(Double,Int)] = Array()
     (0 until number).foreach(a => buffer +:= (0.0,0))
-    array.foreach(a=> buffer = buffer.map(b=> if(b._1 < a._1) {(a._1,a._2)}else{(b._1,b._2)}) )
+
+    array.foreach(a => buffer = genBuffer(buffer,a) )
     buffer.map(a=>a._2)
+  }
+
+  def genBuffer(buffer : Array[(Double,Int)],a:(Double,Int)): Array[(Double,Int)] = {
+    var newBuffer = buffer
+    for(i <- 0 until buffer.length){
+      if((buffer.length-1 == i && buffer(i)._1 < a._1) || (buffer.length-1 != i && buffer(i)._1 < a._1 && buffer(i+1)._1 >= a._1)) {
+        newBuffer.update(i,(a._1,a._2))
+
+      }
+    }
+    newBuffer
   }
 
   def vectorsToBlockMatrix(array : RDD[(Int,Array[Double])]) : BlockMatrix = {
