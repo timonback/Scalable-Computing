@@ -45,14 +45,16 @@ object Recommender extends App{
       .getOrCreate()
     sc = ss.sparkContext
 
+   
 	var jarFileEnv = sys.env.get("SPARK_JAR").getOrElse("")
 	println("Add jar file(s) to spark: " + jarFileEnv)
 	for(jarFile <- jarFileEnv.split(",")) {
 	sc.addJar(jarFile)
 	}
 
+
     var ratingsRDD : RDD[Rating] =  null
-    if(useDummyDataOpt.isEmpty) {
+    if(useDummyDataOpt.isEmpty) { 
       // Or load from db
       println("Loading rating data from DB")
       var temp = MongoSpark.load(sc).toDF.rdd
@@ -61,10 +63,10 @@ object Recommender extends App{
       // Load Random Rating Data
       println("Generating dummy rating data")
       var ratings : Array[Rating] = Array()
-      for( user <- 0 to 200-1){
+      for( user <- 0 to 300-1){
         for( article <- 0 to 100-1){
           val r = scala.util.Random
-          if(r.nextInt(100) >= 90) {
+          if(r.nextInt(100) >= 50) {
             ratings +:= Rating(user,article,r.nextInt(1000)*.1)
           }
         }
@@ -73,12 +75,12 @@ object Recommender extends App{
     }
 
     // Learn Model
-    val numIterations = 2
-    val numLatentFactors = 5
-    val articleIndices = ratingsRDD.groupBy(_.article).map(a=>a._1).collect()
+    val numIterations = 3
+    val numLatentFactors = 10
+    val numArticles = ratingsRDD.groupBy(_.article).map(a=>a._1).max()
     val regularization = 0.01
     val numPredictions = 10
-    val model : ALSModel = learnModel(ratingsRDD,numIterations,numLatentFactors,articleIndices,regularization)
+    val model : ALSModel = learnModel(ratingsRDD,numIterations,numLatentFactors,numArticles,regularization)
 
     // Generate recommendations
     val recommendations = recommendArticles(numPredictions, model,ratingsRDD)
@@ -87,24 +89,24 @@ object Recommender extends App{
     storeRecommendations(ss,recommendations)
 
     // Generate recommendations for anonymous user
-    var newRatingsRDD = ratingsRDD
-    var newRecommendations = recommendArticlesForNewUsers(newRatingsRDD, numIterations , numLatentFactors, regularization, model, numPredictions)
+    //var newRatingsRDD = ratingsRDD
+    //var newRecommendations = recommendArticlesForNewUsers(newRatingsRDD, numIterations , numLatentFactors, regularization, model, numPredictions)
 
     // Store new recommendations
-    storeRecommendations(ss,newRecommendations)
+    //storeRecommendations(ss,newRecommendations)
 
     sc.stop()
   }
 
-  def learnModel(ratings: RDD[Rating], numIterations: Int, numLatentFactors : Int,articleIndices : Array[Int], regularization: Double): ALSModel = {
+  def learnModel(ratings: RDD[Rating], numIterations: Int, numLatentFactors : Int,numArticles : Int, regularization: Double): ALSModel = {
     // Initialize User and Article Factors
     var userFactors: RDD[(Int, Array[Double])] = null
-    var articleFactors: RDD[(Int, Array[Double])] = initialize(articleIndices, numLatentFactors)
+    var articleFactors: RDD[(Int, Array[Double])] = initialize(numArticles, numLatentFactors)
 
     // Learn Model
     for (i <- 0 until numIterations) {
-      userFactors = alsStep(ratings, numLatentFactors, regularization, articleFactors, true)
-      articleFactors = alsStep(ratings,  numLatentFactors,  regularization, userFactors, false)
+      userFactors = alsStep(ratings, numLatentFactors, regularization, articleFactors, false)
+      articleFactors = alsStep(ratings,  numLatentFactors,  regularization, userFactors, true)
     }
 
     ALSModel(userFactors, articleFactors)
@@ -119,8 +121,8 @@ object Recommender extends App{
     }
     val ratingsWithFactors = factors.join(ratingsBy)
 
-    val sumsSelfPerUser = dotSelfTransposeSelf(ratingsWithFactors, firstStage)
-    var right = dotSelfTransposeRatings(ratingsWithFactors, firstStage)
+    val sumsSelfPerUser = dotSelfTransposeSelf(ratingsWithFactors, !firstStage)
+    var right = dotSelfTransposeRatings(ratingsWithFactors, !firstStage)
 
     val toloop : RDD[(Int,( Array[Array[Double]], Array[Double] ))] = sumsSelfPerUser.join(right)
 
@@ -212,9 +214,9 @@ object Recommender extends App{
     new DenseMatrix(dm.rows,dm.cols,dm.data)
   }
 
-  def initialize( indexes : Array[Int], numLatentFactors : Int) : RDD[(Int, Array[Double])] = {
+  def initialize( numArticles : Int, numLatentFactors : Int) : RDD[(Int, Array[Double])] = {
     var result: Array[(Int, Array[Double])] = Array()
-    indexes.foreach( x => {
+    (0 to numArticles).foreach( x => {
       var array : Array[Double] = Array()
       for (y <- 0 until numLatentFactors) {
         val r = scala.util.Random
@@ -230,9 +232,11 @@ object Recommender extends App{
     var b = vectorsToBlockMatrix(model.articleFactors).transpose
 
     var c = a.multiply(b)
+
     // Remove already rated
     val ratingsMatrix : BlockMatrix = new CoordinateMatrix(ratings.map(a=> MatrixEntry(a.user,a.article,Double.PositiveInfinity)),c.numRows(),c.numCols()).toBlockMatrix()
-    c.subtract(ratingsMatrix)
+
+    c = c.subtract(ratingsMatrix)
 
     var lengths : RDD[Array[Double]] = c.toIndexedRowMatrix().rows.map(a=> a.vector.toArray)
 
@@ -266,7 +270,6 @@ object Recommender extends App{
     for(i <- 0 until buffer.length){
       if((buffer.length-1 == i && buffer(i)._1 < a._1) || (buffer.length-1 != i && buffer(i)._1 < a._1 && buffer(i+1)._1 >= a._1)) {
         newBuffer.update(i,(a._1,a._2))
-
       }
     }
     newBuffer
@@ -274,7 +277,11 @@ object Recommender extends App{
 
   def vectorsToBlockMatrix(array : RDD[(Int,Array[Double])]) : BlockMatrix = {
     val entries = sc.parallelize(array.zipWithIndex.map({case (a:(Int,Array[Double]),x:Long) => a._2.zipWithIndex.map({ case (e:Double,y:Int) => MatrixEntry(x,y,e)})}).reduce(_++_))
-    val coordMat : CoordinateMatrix = new CoordinateMatrix(entries)
+
+    val rows = array.collect().length
+    val cols = array.collect()(0)._2.length
+
+    val coordMat : CoordinateMatrix = new CoordinateMatrix(entries,rows,cols)
     coordMat.toBlockMatrix()
   }
 
