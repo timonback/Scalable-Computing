@@ -14,16 +14,16 @@ object Article {
   implicit object ArticleWrites extends OWrites[Article] {
     def writes(article: Article): JsObject = Json.obj(
       "id" -> article.id,
-      "title" -> article.title,
-      "url" -> article.url)
+      "headline.main" -> article.title,
+      "web_url" -> article.url)
   }
 
   implicit object ArticleReads extends Reads[Article] {
     def reads(json: JsValue): JsResult[Article] = json match {
       case obj: JsObject => try {
         val id = (obj \ "id").as[Int]
-        val title = (obj \ "title").as[String]
-        val url = (obj \ "url").as[String]
+        val title = (obj \ "headline" \ "main").as[String]
+        val url = (obj \ "web_url").as[String]
 
         JsSuccess(Article(id, title, url))
 

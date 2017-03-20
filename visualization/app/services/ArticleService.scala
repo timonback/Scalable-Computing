@@ -27,7 +27,7 @@ class ArticleService @Inject()(val reactiveMongoApi: ReactiveMongoApi,
     // the cursor of documents
     val found = collection.map(_.find(Json.obj()).sort(sort).cursor[Article]())
 
-    found.flatMap(_.collect[List]())
+    found.flatMap(_.collect[List](10))
   }
 
   def findById(id: String): Future[Option[Article]] = {
@@ -54,7 +54,7 @@ class ArticleService @Inject()(val reactiveMongoApi: ReactiveMongoApi,
             field.drop(1) -> -1
           else field -> 1
         }
-        if order._1 == "title" || order._1 == "url"
+        if order._1 == "headline.main" || order._1 == "web_url"
       } yield order._1 -> implicitly[Json.JsValueWrapper](Json.toJson(order._2))
 
       Json.obj(sortBy: _*)

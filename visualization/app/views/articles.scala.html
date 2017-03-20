@@ -6,10 +6,10 @@
             <div id="sort">
                 <span>Sort by:</span>
                 <ul class="nav nav-pills">
-                    <li @if(activeSort == "title"){class="active"}><a href="@routes.Articles.index?sort=title">title</a></li>
-                    <li @if(activeSort == "-title"){class="active"}><a href="@routes.Articles.index?sort=-title">-title</a></li>
-                    <li @if(activeSort == "url"){class="active"}><a href="@routes.Articles.index?sort=url">url</a></li>
-                    <li @if(activeSort == "-url"){class="active"}><a href="@routes.Articles.index?sort=-url">-url</a></li>
+                    <li @if(activeSort == "title"){class="active"}><a href="@routes.Articles.index?sort=headline.main">title</a></li>
+                    <li @if(activeSort == "-title"){class="active"}><a href="@routes.Articles.index?sort=-headline.main">-title</a></li>
+                    <li @if(activeSort == "web_url"){class="active"}><a href="@routes.Articles.index?sort=web_url">url</a></li>
+                    <li @if(activeSort == "-web_url"){class="active"}><a href="@routes.Articles.index?sort=-web_url">-url</a></li>
                     <li @if(activeSort == "none"){class="active"}><a href="@routes.Articles.index">none</a></li>
                 </ul>
             </div>
