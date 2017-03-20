@@ -34,8 +34,11 @@ object Fetcher {
 
       val df: DataFrame = spark.read.json(rdd)
       val articleLambdaFunction = org.apache.spark.sql.functions.explode(df.col("response.docs")).as("articles")
-      val articles: DataFrame = df.select(articleLambdaFunction).selectExpr("articles.*")
-      //println(articles.printSchema())
+      val articlesUnfixed: DataFrame = df.select(articleLambdaFunction).selectExpr("articles.*")
+      //println(articlesUnfixed.printSchema())
+
+      val idLambdaFunction = org.apache.spark.sql.functions.udf((url: String) => url.hashCode)
+      val articles: DataFrame = articlesUnfixed.withColumn("id", idLambdaFunction(articlesUnfixed("web_url")))
 
       val count = articles.count().toInt
       val countStored = (count * 0.75).toInt
