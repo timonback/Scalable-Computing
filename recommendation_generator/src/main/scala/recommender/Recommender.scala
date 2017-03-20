@@ -39,7 +39,7 @@ object Recommender extends App{
       .builder()
       .master(sparkUrl)
       .appName("recommender")
-      .config("spark.mongodb.input.uri", mongoUrl+".likes")
+      .config("spark.mongodb.input.uri", mongoUrl+".ratings")
       .config("spark.mongodb.output.uri", mongoUrl+".recommendations")
       .getOrCreate()
     sc = ss.sparkContext
