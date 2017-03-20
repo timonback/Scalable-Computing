@@ -29,7 +29,6 @@ object Recommender extends App{
 
     var sparkUrl = "spark://"+sparkAddress+":"+sparkPort
 
-
     val mongoUrl = "mongodb://"+dbAddress+":"+dbPort+"/"+dbKeySpace
 
     println("Spark expected at: " + sparkUrl)
@@ -54,7 +53,7 @@ object Recommender extends App{
   
 
     var ratingsRDD : RDD[Rating] =  null
-    if(useDummyDataOpt.isEmpty) {
+    if(useDummyDataOpt.isEmpty ) {  
       // Or load from db
       println("Loading rating data from DB")
       var temp = MongoSpark.load(sc).toDF.rdd
@@ -63,11 +62,11 @@ object Recommender extends App{
       // Load Random Rating Data
       println("Generating dummy rating data")
       var ratings : Array[Rating] = Array()
-      for( user <- 1 to 278-1){
-        for( article <- 1 to 134-1){
+      for( user <- 0 to 278-1){
+        for( article <- 0 to 134-1){
           val r = scala.util.Random
-          if(r.nextInt(100) >= 50) {
-            ratings +:= Rating(user,article,r.nextInt(1000)*.1)
+          if(r.nextInt(100) >= 95) {
+            ratings +:= Rating(user,article,r.nextInt(10)*.1)
           }
         }
       }
@@ -77,9 +76,9 @@ object Recommender extends App{
 
     // Learn Model
     val numIterations = 12
-    val numLatentFactors = 7
-    val numArticles = ratingsRDD.groupBy(_.article).map(a=>a._1).max()
-    val regularization = 0.01
+    val numLatentFactors = 25
+    val numArticles = ratingsRDD.groupBy(_.article).map(a=>a._1).collect()
+    val regularization = 0.1
     val numPredictions = 10
     val model : ALSModel = learnModel(ratingsRDD,numIterations,numLatentFactors,numArticles,regularization)
 
@@ -99,7 +98,7 @@ object Recommender extends App{
     sc.stop()
   }
 
-  def learnModel(ratings: RDD[Rating], numIterations: Int, numLatentFactors : Int,numArticles : Int, regularization: Double): ALSModel = {
+  def learnModel(ratings: RDD[Rating], numIterations: Int, numLatentFactors : Int,numArticles : Array[Int], regularization: Double): ALSModel = {
     // Initialize User and Article Factors
     var userFactors: RDD[(Int, Array[Double])] = null
     var articleFactors: RDD[(Int, Array[Double])] = initialize(numArticles, numLatentFactors)
@@ -207,16 +206,17 @@ object Recommender extends App{
   def inverse(mat: DenseMatrix): DenseMatrix = {
     var dm  = new breeze.linalg.DenseMatrix[Double](mat.numRows,mat.numCols,mat.values)
     dm = inv(dm)
+
     new DenseMatrix(dm.rows,dm.cols,dm.data)
   }
 
-  def initialize( numArticles : Int, numLatentFactors : Int) : RDD[(Int, Array[Double])] = {
+  def initialize( numArticles : Array[Int], numLatentFactors : Int) : RDD[(Int, Array[Double])] = {
     var result: Array[(Int, Array[Double])] = Array()
-    (0 to numArticles).foreach( x => {
+    (numArticles).foreach( x => {
       var array : Array[Double] = Array()
       for (y <- 0 until numLatentFactors) {
         val r = scala.util.Random
-        array +:= r.nextInt(1000)*.1
+        array +:= r.nextInt(10)*.1
       }
       result +:= (x,array)
     })
