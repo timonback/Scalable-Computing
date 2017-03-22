@@ -30,10 +30,11 @@
                 <div id="navbar" class="navbar-collapse collapse">
                     <ul class="nav navbar-nav">
                         <li class=@("active".when(tab == "index"))><a href="/">Home</a></li>
-                        <li class=@("active".when(tab == "user"))><a href="/user">Users</a></li>
                         <li class=@("active".when(tab == "article"))><a href="/article">Articles</a></li>
+                        <li class=@("active".when(tab == "graph"))><a href="/graph">Graphs</a></li>
                         <li class=@("active".when(tab == "rating"))><a href="/rating">Ratings</a></li>
                         <li class=@("active".when(tab == "recommendation"))><a href="/recommendation">Recommendations</a></li>
+                        <li class=@("active".when(tab == "user"))><a href="/user">Users</a></li>
                     </ul>
                     <ul class="nav navbar-nav navbar-right">
                     @if( session.get("username").isEmpty ) {

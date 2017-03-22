@@ -13,7 +13,7 @@ class Articles @Inject()(val messagesApi: MessagesApi, articleService: ArticleSe
   extends Controller {
 
 
-  val index = Action.async { implicit request =>
+  def index = Action.async { implicit request =>
 
     val activeSort = request.queryString.get("sort").
       flatMap(_.headOption).getOrElse("none")

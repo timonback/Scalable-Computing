@@ -5,9 +5,21 @@
 # Home page
 GET     /                           controllers.Home.index
 
+GET     /article                    controllers.Articles.index
+
+GET     /generators                 controllers.Generator.index
+GET     /generators/user/:amount    controllers.Generator.genUsers(amount)
+
+GET     /graph                      controllers.Graphs.index
+GET     /graph/data                 controllers.Graphs.data
+
 GET     /login                      controllers.Users.showLoginForm
 POST    /login                      controllers.Users.login
 GET     /logout                     controllers.Users.logout
+
+GET     /rating                     controllers.Ratings.index
+
+GET     /recommendation             controllers.Recommendations.index
 
 GET     /user                       controllers.Users.index
 GET     /user/new                   controllers.Users.showCreationForm
@@ -15,12 +27,6 @@ POST    /user/new                   controllers.Users.create
 GET     /user/:id                   controllers.Users.showEditForm(id)
 POST    /user/:id                   controllers.Users.edit(id)
 DELETE  /user/:id                   controllers.Users.delete(id)
-
-GET     /article                    controllers.Articles.index
-
-GET     /rating                     controllers.Ratings.index
-
-GET     /recommendation             controllers.Recommendations.index
 
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               controllers.Assets.at(path="/public", file)
