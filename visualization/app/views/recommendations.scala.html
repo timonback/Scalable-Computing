@@ -1,0 +1,27 @@
+@(recommendations: List[models.Recommendation], activeSort: String)(implicit session: play.api.mvc.Session)
+
+@main("Available recommendations", "recommendation") {
+    <div class="row">
+        <div class="span12">
+            <div id="sort">
+                <span>Sort by:</span>
+                <ul class="nav nav-pills">
+                    <li @if(activeSort == "title"){class="active"}><a href="@routes.Recommendations.index?sort=userid">userid</a></li>
+                    <li @if(activeSort == "-title"){class="active"}><a href="@routes.Recommendations.index?sort=-userid">-userid</a></li>
+                    <li @if(activeSort == "url"){class="active"}><a href="@routes.Recommendations.index?sort=recommendations">recommendations</a></li>
+                    <li @if(activeSort == "-url"){class="active"}><a href="@routes.Recommendations.index?sort=-recommendations">-recommendations</a></li>
+                    <li @if(activeSort == "none"){class="active"}><a href="@routes.Recommendations.index">none</a></li>
+                </ul>
+            </div>
+            @if(recommendations.isEmpty) {
+                <p>No recommendations available yet.</p>
+            } else {
+                <ul>
+                @recommendations.map { recommendation =>
+                    <li>@recommendation.userid: @recommendation.recommendations</li>
+                }
+                </ul>
+            }
+        </div>
+    </div>
+}

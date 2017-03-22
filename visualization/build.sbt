@@ -1,7 +1,7 @@
 name := "newsForYou-visualization"
 dockerRepository := Some("timonback")
 
-version := "1.0"
+version := "latest"
 
 lazy val `visualization` = (project in file("."))
   .enablePlugins(PlayScala)
