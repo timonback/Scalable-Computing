@@ -37,7 +37,7 @@ docker service create --name mongo -p 27017:27017 --replicas 2 --network service
 docker service create --name visualization -p 9000:9000 -e MONGO_ADDRESS=mongo --replicas 1 --network services timonback/newsforyou-visualization:latest
 
 #Add spark master
-docker service create --name spark-master --hostname spark-master -p 7077:7077 -p 8080:8080--replicas 1 --network services singularities/spark start-spark master
+docker service create --name spark-master --hostname spark-master -p 7077:7077 -p 8080:8080 --replicas 1 --network services singularities/spark start-spark master
 
 #Add spark workers
 docker service create --name spark-worker --hostname spark-worker --replicas 2 --network services singularities/spark start-spark worker spark-master
