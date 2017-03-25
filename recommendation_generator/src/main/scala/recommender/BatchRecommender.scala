@@ -29,9 +29,6 @@ object BatchRecommender extends App{
 
     var sparkUrl = "spark://"+sparkAddress+":"+sparkPort
 
-    // TEMP
-    sparkUrl = "local"
-
     val mongoUrl = "mongodb://"+dbAddress+":"+dbPort+"/"+dbKeySpace
 
     println("Spark expected at: " + sparkUrl)
@@ -46,17 +43,17 @@ object BatchRecommender extends App{
       .config("spark.mongodb.output.uri", mongoUrl+".recommendations")
       .getOrCreate()
     sc = ss.sparkContext
+    sc.setLogLevel("ERROR")
 
-    if(false){ // TEMP
-      var jarFileEnv = sys.env.get("SPARK_JAR").getOrElse("")
-      println("Add jar file(s) to spark: " + jarFileEnv)
-      for(jarFile <- jarFileEnv.split(",")) {
-        sc.addJar(jarFile)
-      }
-    }
+	var jarFileEnv = sys.env.get("SPARK_JAR").getOrElse("")
+	println("Add jar file(s) to spark: " + jarFileEnv)
+	for(jarFile <- jarFileEnv.split(",")) {
+		sc.addJar(jarFile)
+	}
+
 
     var ratingsRDD : RDD[Rating] =  null
-    if(useDummyDataOpt.isEmpty && false) {  // TEMP
+    if(useDummyDataOpt.isEmpty) { 
       // Or load from db
       println("Loading rating data from DB")
       var temp = MongoSpark.load(sc).toDF.rdd

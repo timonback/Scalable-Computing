@@ -8,6 +8,11 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.mllib.linalg.distributed.{BlockMatrix, CoordinateMatrix, MatrixEntry, _}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.mllib.linalg.{DenseMatrix, DenseVector, Matrices, Vector}
+import _root_.kafka.serializer.DefaultDecoder
+import _root_.kafka.serializer.StringDecoder
+import org.apache.spark.streaming.kafka.KafkaUtils
+import org.apache.spark.storage.StorageLevel
+import org.apache.spark.streaming._
 
 object StreamingRecommender extends App {
   var sc: SparkContext = _
@@ -39,16 +44,18 @@ object StreamingRecommender extends App {
       .config("spark.mongodb.output.uri", mongoUrl + ".recommendations")
       .getOrCreate()
     sc = ss.sparkContext
-
+    sc.setLogLevel("ERROR")
 
     var model = loadModel()
 
-    // TODO: ADD LOOP
-    if(true){ // TODO: check if model was updated
+    // TODO: new rating -> remove from recommendations of user (make user key in db?)
+    // TODO: check length array, length == 0? then:
+
+    val ratings = loadRatings() // TODO: read from DB all ratings by user (make user key in db?)
+
+    if(true){ // TODO: check if updated
       model = loadModel()
     }
-    val ratings = loadRatings()
-
     val numIterations = 12
     val numLatentFactors = 35
     val numArticles = ratings.groupBy(_.article).map(a=>a._1).collect()
@@ -58,6 +65,7 @@ object StreamingRecommender extends App {
     val recommendations = recommendArticlesForNewUsers(ratings,numIterations,numLatentFactors,regularization,model,numPredictions)
     BatchRecommender.storeRecommendations(ss,recommendations,true)
 
+    sc.stop()
   }
 
   def loadModel(): ALSModel = {
@@ -68,7 +76,7 @@ object StreamingRecommender extends App {
   }
 
   def loadRatings(): RDD[Rating] ={
-    null // TODO
+    null
   }
 
   def recommendArticlesForNewUsers(ratings: RDD[Rating], numIterations: Int, numLatentFactors : Int, regularization: Double, model: ALSModel,number :Int): RDD[(Long, Array[Long])] = {
