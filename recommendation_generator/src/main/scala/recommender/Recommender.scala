@@ -29,7 +29,6 @@ object Recommender extends App{
 
     var sparkUrl = "spark://"+sparkAddress+":"+sparkPort
 
-
     val mongoUrl = "mongodb://"+dbAddress+":"+dbPort+"/"+dbKeySpace
 
     println("Spark expected at: " + sparkUrl)
@@ -44,6 +43,7 @@ object Recommender extends App{
       .config("spark.mongodb.output.uri", mongoUrl+".recommendations")
       .getOrCreate()
     sc = ss.sparkContext
+
 
 	var jarFileEnv = sys.env.get("SPARK_JAR").getOrElse("")
 	println("Add jar file(s) to spark: " + jarFileEnv)
@@ -61,12 +61,15 @@ object Recommender extends App{
       // Load Random Rating Data
       println("Generating dummy rating data")
       var ratings : Array[Rating] = Array()
-      for( user <- 0 to 278-1){
-        for( article <- 0 to 134-1){
+      for( user <- 0 to 300-1){
+        val r2 = scala.util.Random
+        if(r2.nextInt(100) >= 80) {
+        for( article <- 0 to 100-1){
           val r = scala.util.Random
-          if(r.nextInt(100) >= 95) {
+          if(r.nextInt(100) >= 98) {
             ratings +:= Rating(user,article,r.nextInt(10)*.1)
           }
+        }
         }
       }
 
@@ -75,7 +78,7 @@ object Recommender extends App{
 
     // Learn Model
     val numIterations = 12
-    val numLatentFactors = 25
+    val numLatentFactors = 35
     val numArticles = ratingsRDD.groupBy(_.article).map(a=>a._1).collect()
     val regularization = 0.1
     val numPredictions = 10
@@ -235,7 +238,7 @@ object Recommender extends App{
 
     var lengths : RDD[Array[Double]] = c.toIndexedRowMatrix().rows.map(a=> a.vector.toArray)
 
-    lengths.map(a=>getLargestN(a.zipWithIndex.map(a=>(a._1,a._2.toLong)),number)).zipWithIndex().map(a=>(a._2,a._1))
+    lengths.map(a=>getLargestN(a.zipWithIndex.map(a=>(a._1,a._2.toLong)),number)).zipWithIndex().map(a=>(a._2,a._1)).filter(a=>a._2(0) >= 0)
   }
 
   def recommendArticlesForNewUsers(ratings: RDD[Rating], numIterations: Int, numLatentFactors : Int, regularization: Double, model: ALSModel,number :Int): RDD[(Long, Array[Long])] = {
@@ -254,7 +257,7 @@ object Recommender extends App{
 
   def getLargestN(array: Array[(Double,Long)],number:Int) : Array[Long] = {
     var buffer : Array[(Double,Long)] = Array()
-    (0 until number).foreach(a => buffer +:= (0.0,0L))
+    (0 until number).foreach(a => buffer +:= (0.0,-1L))
 
     array.foreach(a => buffer = genBuffer(buffer,a) )
     buffer.map(a=>a._2)
@@ -271,11 +274,11 @@ object Recommender extends App{
   }
 
   def vectorsToBlockMatrix(array : RDD[(Long,Array[Double])]) : BlockMatrix = {
-    val entries = sc.parallelize(array.zipWithIndex.map({case (a:(Long,Array[Double]),x:Long) => a._2.zipWithIndex.map({ case (e:Double,y:Int) => MatrixEntry(x,y,e)})}).reduce(_++_))
+    val entries  = sc.parallelize(array.map(a=> a._2.zipWithIndex.map(b=> MatrixEntry(a._1,b._2,b._1))).reduce(_++_))
 
-    val rows = array.collect().length+1
-    val cols = array.collect()(0)._2.length+1
-
+    val rows = array.keyBy(_._1).map(_._1).max()+1
+    val cols = array.collect()(0)._2.length
+    
     val coordMat : CoordinateMatrix = new CoordinateMatrix(entries,rows,cols)
     coordMat.toBlockMatrix()
   }
