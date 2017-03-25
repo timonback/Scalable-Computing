@@ -6,14 +6,14 @@ import com.mongodb.spark.MongoSpark
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.mllib.linalg.distributed.{BlockMatrix, CoordinateMatrix, MatrixEntry, _}
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.{DataFrame, SparkSession,SaveMode}
 import org.apache.spark.mllib.linalg.{DenseMatrix, DenseVector, Matrices, Vector}
 
 
 case class ALSModel (userFactors: RDD[(Long,Array[Double])], articleFactors: RDD[(Long,Array[Double])])
 case class Rating (user:Long, article:Long, rating:Double)
 
-object Recommender extends App{
+object BatchRecommender extends App{
   var sc : SparkContext = _
 
   override
@@ -28,6 +28,7 @@ object Recommender extends App{
     val useDummyDataOpt = sys.env.get("USE_DUMMY_DATA")
 
     var sparkUrl = "spark://"+sparkAddress+":"+sparkPort
+
 
     val mongoUrl = "mongodb://"+dbAddress+":"+dbPort+"/"+dbKeySpace
 
@@ -50,6 +51,7 @@ object Recommender extends App{
 	for(jarFile <- jarFileEnv.split(",")) {
 	sc.addJar(jarFile)
 	}
+ 
 
     var ratingsRDD : RDD[Rating] =  null
     if(useDummyDataOpt.isEmpty) { 
@@ -88,14 +90,10 @@ object Recommender extends App{
     val recommendations = recommendArticles(numPredictions, model,ratingsRDD)
 
     // Store recommendations
-    storeRecommendations(ss,recommendations)
+    storeRecommendations(ss,recommendations,false)
 
-    // Generate recommendations for anonymous user
-    //var newRatingsRDD = ratingsRDD
-    //var newRecommendations = recommendArticlesForNewUsers(newRatingsRDD, numIterations , numLatentFactors, regularization, model, numPredictions)
-
-    // Store new recommendations
-    //storeRecommendations(ss,newRecommendations)
+    // Store model in DB
+    storeFactorsInDB(model.articleFactors)
 
     sc.stop()
   }
@@ -167,11 +165,17 @@ object Recommender extends App{
       .map(a=>a._2)
   }
 
-  def storeRecommendations(ss: SparkSession,recommendations : RDD[(Long,Array[Long])]) = {
+  def storeRecommendations(ss: SparkSession,recommendations : RDD[(Long,Array[Long])],append:Boolean) = {
     val df : DataFrame =  ss.createDataFrame( recommendations )
     val lpDF = df.withColumnRenamed("_1", "userid").withColumnRenamed("_2", "recommendations")
     lpDF.printSchema()
-    MongoSpark.write(lpDF).option("collection", "recommendations").mode("overwrite").save()
+    var a = MongoSpark.write(lpDF).option("collection", "recommendations")
+    if(append){
+      a = a.mode(SaveMode.Append)
+    }else{
+      a = a.mode(SaveMode.Overwrite)
+    }
+    a.save()
   }
 
   def dotSelfTransposeSelf(factors : RDD[(Long,(Array[Double],Rating) )], firstStage:Boolean) : RDD[(Long,Array[Array[Double]])] = {
@@ -241,20 +245,6 @@ object Recommender extends App{
     lengths.map(a=>getLargestN(a.zipWithIndex.map(a=>(a._1,a._2.toLong)),number)).zipWithIndex().map(a=>(a._2,a._1)).filter(a=>a._2(0) >= 0)
   }
 
-  def recommendArticlesForNewUsers(ratings: RDD[Rating], numIterations: Int, numLatentFactors : Int, regularization: Double, model: ALSModel,number :Int): RDD[(Long, Array[Long])] = {
-    // Implements ALS fold-in to compute user factors and recommendations for new user ratings.
-
-    // Initialize User Factors
-    var userFactors: RDD[(Long, Array[Double])] = null
-    // Learn Model
-    for (i <- 0 until numIterations) {
-      userFactors = alsStep(ratings, numLatentFactors, regularization, model.articleFactors, true)
-    }
-    var newModel = ALSModel(userFactors, model.articleFactors)
-    // Recommend Articles
-    recommendArticles(number, newModel,ratings)
-  }
-
   def getLargestN(array: Array[(Double,Long)],number:Int) : Array[Long] = {
     var buffer : Array[(Double,Long)] = Array()
     (0 until number).foreach(a => buffer +:= (0.0,-1L))
@@ -278,9 +268,13 @@ object Recommender extends App{
 
     val rows = array.keyBy(_._1).map(_._1).max()+1
     val cols = array.collect()(0)._2.length
-    
+
     val coordMat : CoordinateMatrix = new CoordinateMatrix(entries,rows,cols)
     coordMat.toBlockMatrix()
+  }
+
+  def storeFactorsInDB(factors:RDD[(Long,Array[Double])]): Unit ={
+
   }
 
 }
