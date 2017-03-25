@@ -25,9 +25,6 @@ object StreamingRecommender extends App {
 
     var sparkUrl = "spark://" + sparkAddress + ":" + sparkPort
 
-    // TEMP
-    sparkUrl = "local"
-
     val mongoUrl = "mongodb://" + dbAddress + ":" + dbPort + "/" + dbKeySpace
 
     println("Spark expected at: " + sparkUrl)
@@ -43,7 +40,13 @@ object StreamingRecommender extends App {
       .getOrCreate()
     sc = ss.sparkContext
 
-    val model = loadModel()
+
+    var model = loadModel()
+
+    // TODO: ADD LOOP
+    if(true){ // TODO: check if model was updated
+      model = loadModel()
+    }
     val ratings = loadRatings()
 
     val numIterations = 12
@@ -52,14 +55,16 @@ object StreamingRecommender extends App {
     val regularization = 0.1
     val numPredictions = 10
 
-    // TODO: ADD LOOP
     val recommendations = recommendArticlesForNewUsers(ratings,numIterations,numLatentFactors,regularization,model,numPredictions)
     BatchRecommender.storeRecommendations(ss,recommendations,true)
 
   }
 
   def loadModel(): ALSModel = {
-    ALSModel(null,null)  // TODO
+    var temp = MongoSpark.load(sc).toDF.rdd
+    val factors = temp.map(row => (row.getLong(0),row.getAs[Array[Double]](1) ))
+
+    ALSModel(null,factors)
   }
 
   def loadRatings(): RDD[Rating] ={
