@@ -43,7 +43,7 @@ object BatchRecommender extends App{
       .config("spark.mongodb.output.uri", mongoUrl+".recommendations")
       .getOrCreate()
     sc = ss.sparkContext
-    sc.setLogLevel("ERROR")
+
 
 	var jarFileEnv = sys.env.get("SPARK_JAR").getOrElse("")
 	println("Add jar file(s) to spark: " + jarFileEnv)
@@ -53,7 +53,7 @@ object BatchRecommender extends App{
 
 
     var ratingsRDD : RDD[Rating] =  null
-    if(useDummyDataOpt.isEmpty) { 
+    if(useDummyDataOpt.isEmpty) {
       // Or load from db
       println("Loading rating data from DB")
       var temp = MongoSpark.load(sc).toDF.rdd
@@ -281,7 +281,6 @@ object BatchRecommender extends App{
     lpDF.printSchema()
     var a = MongoSpark.write(lpDF).option("collection", "articleFactors")
     a = a.mode(SaveMode.Overwrite)
-
     a.save()
   }
 
