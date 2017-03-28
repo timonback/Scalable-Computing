@@ -55,20 +55,25 @@ object StreamingRecommender extends App {
       .getOrCreate()
     sc = ss.sparkContext
 
-//    val Array(zkQuorum, group, topics, numThreads) = Array("localhost:2181","ratingsGroup","ratingsTopic","1")
-//    val ssc = new StreamingContext(sc, Seconds(3))
-//    ssc.checkpoint("checkpoint")
-//    val topicMap = topics.split(",").map((_, numThreads.toInt)).toMap
-//    val lines = KafkaUtils.createStream(ssc, zkQuorum, group, topicMap).map(_._2)
-//    val words = lines.flatMap(_.split(" ")).map(a=>processLine(a)).print()
-//
-//    ssc.start()
-//    ssc.awaitTermination()
+    val Array(zkQuorum, group, topics, numThreads) = Array("localhost:2181","ratingConsumer","ratings","1")
+    val ssc = new StreamingContext(sc, Seconds(2))
+    ssc.checkpoint("checkpoint")
 
-    while(true){
-      processLine("286,91,0.25648")
-      Thread.sleep(1000)
-    }
+    val topicMap = topics.split(",").map((_, numThreads.toInt)).toMap
+
+    // testing
+    val lines = KafkaUtils.createStream(ssc, zkQuorum, group, topicMap).map(_._2)
+    val words = lines.flatMap(_.split(","))
+    val wordCounts = words.map(x => (x, 1L))
+      .reduceByKeyAndWindow(_ + _, _ - _, Minutes(10), Seconds(2), 2)
+    wordCounts.print()
+
+    lines.map(processLine)
+
+    lines.map(print)
+
+    ssc.start()
+    ssc.awaitTermination()
 
     sc.stop()
   }

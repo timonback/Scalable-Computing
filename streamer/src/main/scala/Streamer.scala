@@ -14,7 +14,7 @@ object Streamer {
     val dbPort = sys.env.get("MONGO_PORT").getOrElse("27017").toInt
     val dbKeySpace = sys.env.get("MONGO_KEYSPACE").getOrElse("newsForYou")
 
-    val topic = "articles"
+    val topic = "ratings"
     val kafkaAddress = sys.env.get("KAFKA_ADDRESS").getOrElse("localhost")
     val kafkaPort = sys.env.get("KAFKA_PORT").getOrElse("9092").toInt
 
@@ -45,7 +45,8 @@ object Streamer {
 
         partition.foreach {
           article =>
-            val message = new ProducerRecord[String, String](topic, null, article.toString())
+            val rnd = scala.util.Random
+            val message = new ProducerRecord[String, String](topic, null, rnd.nextInt(255) + "," + rnd.nextInt(255) + "," + rnd.nextFloat)
             producer.send(message)
         }
     }
