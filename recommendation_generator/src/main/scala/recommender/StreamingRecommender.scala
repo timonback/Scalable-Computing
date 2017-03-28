@@ -23,27 +23,36 @@ object StreamingRecommender extends App {
   var ss: SparkSession = _
 
   var sparkAddress : String = _
-  var sparkPort : String = _
+  var sparkPort : Int = _
+  var kafkaAddress : String = _
+  var kafkaPort : Int = _
+  var kafkaTopic : String = _
   var dbAddress : String = _
-  var dbPort : Long = _
+  var dbPort : Int = _
   var dbKeySpace : String = _
   var useDummyDataOpt : Option[String] = _
   var sparkUrl : String = _
+  var kafkaUrl : String = _
   var mongoUrl : String = _
 
   override
   def main(args: Array[String]) = {
 
     sparkAddress = sys.env.get("SPARK_ADDRESS").getOrElse("localhost")
-    sparkPort = sys.env.get("SPARK_PORT").getOrElse("7077")
+    sparkPort = sys.env.get("SPARK_PORT").getOrElse("7077").toInt
     dbAddress = sys.env.get("MONGO_ADDRESS").getOrElse("localhost")
-    dbPort = sys.env.get("MONGO_PORT").getOrElse("27017").toLong
+    kafkaAddress = sys.env.get("KAFKA_ADDRESS").getOrElse("localhost")
+    kafkaPort = sys.env.get("KAFKA_PORT").getOrElse("2181").toInt
+    kafkaTopic = sys.env.get("KAFKA_TOPIC").getOrElse("ratings")
+    dbPort = sys.env.get("MONGO_PORT").getOrElse("27017").toInt
     dbKeySpace = sys.env.get("MONGO_KEYSPACE").getOrElse("newsForYou")
     useDummyDataOpt = sys.env.get("USE_DUMMY_DATA")
     sparkUrl = "spark://" + sparkAddress + ":" + sparkPort
+    kafkaUrl = kafkaAddress+":"+kafkaPort
     mongoUrl = "mongodb://" + dbAddress + ":" + dbPort + "/" + dbKeySpace
 
     println("Spark expected at: " + sparkUrl)
+    println("Kafka expected at: " + kafkaUrl)
     println("Mongo expected at: " + mongoUrl)
 
     ss = SparkSession
@@ -55,7 +64,7 @@ object StreamingRecommender extends App {
       .getOrCreate()
     sc = ss.sparkContext
 
-    val Array(zkQuorum, group, topics, numThreads) = Array("localhost:2181","ratingConsumer","ratings","1")
+    val Array(zkQuorum, group, topics, numThreads) = Array(kafkaUrl,"ratingConsumer",kafkaTopic,"1")
     val ssc = new StreamingContext(sc, Seconds(2))
     ssc.checkpoint("checkpoint")
 
