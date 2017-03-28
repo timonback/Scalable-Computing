@@ -60,8 +60,8 @@ class Graphs @Inject()(val messagesApi: MessagesApi, recommendationsService: Rec
             ))
             ++
             articleIds.map(articleId => Json.obj(
-              "x" -> Math.random(),
-              "y" -> Math.random(),
+              "x" -> 0,
+              "y" -> 0,
               "size" -> 10,
               "color" -> "#ff0000",
               "id" -> ("article" + articleId.toString()),
