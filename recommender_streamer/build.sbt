@@ -7,6 +7,8 @@ lazy val `recommendator-streamer` = (project in file("."))
 .enablePlugins(DockerPlugin)
 .enablePlugins(JavaAppPackaging)
 
+mainClass in (Compile, run) := Some("recommender.StreamingRecommender")
+
 scalaVersion := "2.11.7"
 
 val sparkVersion = "2.1.0"
