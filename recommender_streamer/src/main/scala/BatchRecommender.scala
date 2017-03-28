@@ -13,89 +13,9 @@ import org.apache.spark.mllib.linalg.{DenseMatrix, DenseVector, Matrices, Vector
 case class ALSModel (userFactors: RDD[(Long,Array[Double])], articleFactors: RDD[(Long,Array[Double])])
 case class Rating (user:Long, article:Long, rating:Double)
 
-object BatchRecommender extends App{
+object BatchRecommender{
   var sc : SparkContext = _
 
-  override
-  def main(args: Array[String]) = {
-    val sparkAddress = sys.env.get("SPARK_ADDRESS").getOrElse("localhost")
-    val sparkPort = sys.env.get("SPARK_PORT").getOrElse("7077")
-
-    val dbAddress = sys.env.get("MONGO_ADDRESS").getOrElse("localhost")
-    val dbPort = sys.env.get("MONGO_PORT").getOrElse("27017").toLong
-    val dbKeySpace = sys.env.get("MONGO_KEYSPACE").getOrElse("newsForYou")
-
-    val useDummyDataOpt = sys.env.get("USE_DUMMY_DATA")
-
-    var sparkUrl = "spark://"+sparkAddress+":"+sparkPort
-
-    val mongoUrl = "mongodb://"+dbAddress+":"+dbPort+"/"+dbKeySpace
-
-    println("Spark expected at: " + sparkUrl)
-    println("Mongo expected at: " + mongoUrl)
-
-
-    val ss = SparkSession
-      .builder()
-      .master(sparkUrl)
-      .appName("recommender")
-      .config("spark.mongodb.input.uri", mongoUrl+".ratings")
-      .config("spark.mongodb.output.uri", mongoUrl+".recommendations")
-      .getOrCreate()
-    sc = ss.sparkContext
-
-
-	var jarFileEnv = sys.env.get("SPARK_JAR").getOrElse("")
-	println("Add jar file(s) to spark: " + jarFileEnv)
-	for(jarFile <- jarFileEnv.split(",")) {
-		sc.addJar(jarFile)
-	}
-
-
-    var ratingsRDD : RDD[Rating] =  null
-    if(useDummyDataOpt.isEmpty) {
-      // Or load from db
-      println("Loading rating data from DB")
-      var temp = MongoSpark.load(sc).toDF.rdd
-      ratingsRDD = temp.map(row => Rating(row.getLong(0), row.getLong(1), row.getDouble(2)))
-    } else {
-      // Load Random Rating Data
-      println("Generating dummy rating data")
-      var ratings : Array[Rating] = Array()
-      for( user <- 0 to 300-1){
-        val r2 = scala.util.Random
-        if(r2.nextInt(100) >= 80) {
-        for( article <- 0 to 100-1){
-          val r = scala.util.Random
-          if(r.nextInt(100) >= 98) {
-            ratings +:= Rating(user,article,r.nextInt(10)*.1)
-          }
-        }
-        }
-      }
-
-      ratingsRDD = sc.parallelize(ratings)
-    }
-
-    // Learn Model
-    val numIterations = 12
-    val numLatentFactors = 35
-    val numArticles = ratingsRDD.groupBy(_.article).map(a=>a._1).collect()
-    val regularization = 0.1
-    val numPredictions = 10
-    val model : ALSModel = learnModel(ratingsRDD,numIterations,numLatentFactors,numArticles,regularization)
-
-    // Generate recommendations
-    val recommendations = recommendArticles(numPredictions, model,ratingsRDD)
-
-    // Store recommendations
-    storeRecommendations(ss,recommendations,false)
-
-    // Store model in DB
-    storeFactorsInDB(model.articleFactors,ss,mongoUrl)
-
-    sc.stop()
-  }
 
   def learnModel(ratings: RDD[Rating], numIterations: Int, numLatentFactors : Int, numArticles : Array[Long], regularization: Double): ALSModel = {
     // Initialize User and Article Factors
