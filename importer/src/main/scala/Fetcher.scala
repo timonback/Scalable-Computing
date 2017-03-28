@@ -28,6 +28,8 @@ object Fetcher {
     var httpResponse: HttpResponse[String] = null
 
     do {
+      println("Downloading "+year+"-"+month)
+    
       httpResponse = Http("https://api.nytimes.com/svc/archive/v1/" + year + "/" + month + ".json").param("api-key", importApiKey).asString
 
       val rdd: RDD[String] = spark.sparkContext.makeRDD(httpResponse.body :: Nil)
