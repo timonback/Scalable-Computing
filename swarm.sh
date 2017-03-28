@@ -60,3 +60,6 @@ docker service create --name spark-recommender-submitter -e MONGO_ADDRESS=mongo 
 #Add importer service (run every 24 hours)
 docker service create --name importer -e MONGO_ADDRESS=mongo --replicas 1 --network services --restart-delay 24h timonback/newsforyou-importer:latest
 
+#Add rating generator
+docker service create --name streamer -e KAFKA_ADDRESS=kafka --replicas 1 --network services --restart-delay 1m timonback/newsforyou-streamer:latest
+

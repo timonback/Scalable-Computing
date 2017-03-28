@@ -14,9 +14,9 @@ object Streamer {
     val dbPort = sys.env.get("MONGO_PORT").getOrElse("27017").toInt
     val dbKeySpace = sys.env.get("MONGO_KEYSPACE").getOrElse("newsForYou")
 
-    val topic = "ratings"
     val kafkaAddress = sys.env.get("KAFKA_ADDRESS").getOrElse("localhost")
     val kafkaPort = sys.env.get("KAFKA_PORT").getOrElse("9092").toInt
+    val topic = sys.env.get("KAFKA_TOPIC").getOrElse("ratings")
 
     val spark = SparkSession
       .builder()
