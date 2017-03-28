@@ -1,9 +1,9 @@
-name := "newsforyou-recommendator"
+name := "newsforyou-recommendator-streamer"
 dockerRepository := Some("timonback")
 
 version := "latest"
 
-lazy val `importer` = (project in file("."))
+lazy val `recommendator-streamer` = (project in file("."))
 .enablePlugins(DockerPlugin)
 .enablePlugins(JavaAppPackaging)
 
