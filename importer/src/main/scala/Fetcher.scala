@@ -43,8 +43,6 @@ object Fetcher {
       val idLambdaFunction = org.apache.spark.sql.functions.udf((url: String) => url.hashCode)
       val articles: DataFrame = articlesUnfixed.withColumn("id", idLambdaFunction(articlesUnfixed("web_url")))
 
-      articles.printSchema()
-
       val count = articles.count().toInt
       val countStored = (count * 0.75).toInt
       val countStream = count - countStored
