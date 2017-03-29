@@ -18,7 +18,7 @@
             } else {
                 <ul>
                 @recommendations.map { recommendation =>
-                    <li>@recommendation.userid: @recommendation.recommendations</li>
+                    <li>@recommendation.userid: @recommendation.recommendations.mkString(",")</li>
                 }
                 </ul>
             }

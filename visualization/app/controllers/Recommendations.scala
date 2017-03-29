@@ -12,7 +12,7 @@ class Recommendations @Inject()(val messagesApi: MessagesApi, recommendationServ
   extends Controller {
 
 
-  val index = Action.async { implicit request =>
+  def index = Action.async { implicit request =>
 
     val activeSort = request.queryString.get("sort").
       flatMap(_.headOption).getOrElse("none")
