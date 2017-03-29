@@ -28,14 +28,14 @@ object StreamingRecommender extends App {
 
   override
   def main(args: Array[String]): Unit = {
-    sparkAddress = sys.env.get("SPARK_ADDRESS").getOrElse("localhost")
-    sparkPort = sys.env.get("SPARK_PORT").getOrElse("7077").toInt
-    dbAddress = sys.env.get("MONGO_ADDRESS").getOrElse("localhost")
-    kafkaAddress = sys.env.get("KAFKA_ADDRESS").getOrElse("localhost")
-    kafkaPort = sys.env.get("KAFKA_PORT").getOrElse("2181").toInt
-    kafkaTopic = sys.env.get("KAFKA_TOPIC").getOrElse("ratings")
-    dbPort = sys.env.get("MONGO_PORT").getOrElse("27017").toInt
-    dbKeySpace = sys.env.get("MONGO_KEYSPACE").getOrElse("newsForYou")
+    sparkAddress = sys.env.getOrElse("SPARK_ADDRESS", "localhost")
+    sparkPort = sys.env.getOrElse("SPARK_PORT", "7077").toInt
+    dbAddress = sys.env.getOrElse("MONGO_ADDRESS", "localhost")
+    kafkaAddress = sys.env.getOrElse("KAFKA_ADDRESS", "localhost")
+    kafkaPort = sys.env.getOrElse("KAFKA_PORT", "2181").toInt
+    kafkaTopic = sys.env.getOrElse("KAFKA_TOPIC", "ratings")
+    dbPort = sys.env.getOrElse("MONGO_PORT", "27017").toInt
+    dbKeySpace = sys.env.getOrElse("MONGO_KEYSPACE", "newsForYou")
     useDummyDataOpt = sys.env.get("USE_DUMMY_DATA")
     sparkUrl = "spark://" + sparkAddress + ":" + sparkPort
     kafkaUrl = kafkaAddress + ":" + kafkaPort
