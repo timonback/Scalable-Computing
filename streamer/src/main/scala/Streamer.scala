@@ -28,7 +28,7 @@ object Streamer {
 
     val ssc = new StreamingContext(spark.sparkContext, Seconds(1))
 
-    val articles = MongoSpark.load(spark) // .select("articles")
+    val articles = MongoSpark.load(spark).select("id")
 
     // println(articles.select("articles.web_url").count() + " articles currently in collection.")
 
@@ -46,7 +46,7 @@ object Streamer {
         partition.foreach {
           article =>
             val rnd = scala.util.Random
-            val message = new ProducerRecord[String, String](topic, null, rnd.nextInt(255) + "," + rnd.nextInt(255) + "," + rnd.nextFloat)
+            val message = new ProducerRecord[String, String](topic, null, article.getInt(0) + "," + rnd.nextInt(255) + "," + rnd.nextFloat)
             producer.send(message)
         }
     }
