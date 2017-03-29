@@ -24,16 +24,16 @@ object StreamingRecommender extends App {
 
   var sparkAddress : String = _
   var sparkPort : Int = _
-  var zkAddress : String = _
-  var zkPort : Int = _
+  var kafkaAddress : String = _
+  var kafkaPort : Int = _
   var kafkaTopic : String = _
   var dbAddress : String = _
   var dbPort : Int = _
   var dbKeySpace : String = _
   var useDummyDataOpt : Option[String] = _
   var sparkUrl : String = _
-  var zkUrl : String = _
-  var dbUrl : String = _
+  var kafkaUrl : String = _
+  var mongoUrl : String = _
 
   override
   def main(args: Array[String]) = {
@@ -41,30 +41,30 @@ object StreamingRecommender extends App {
     sparkAddress = sys.env.get("SPARK_ADDRESS").getOrElse("localhost")
     sparkPort = sys.env.get("SPARK_PORT").getOrElse("7077").toInt
     dbAddress = sys.env.get("MONGO_ADDRESS").getOrElse("localhost")
-    zkAddress = sys.env.get("KAFKA_ADDRESS").getOrElse("localhost")
-    zkPort = sys.env.get("KAFKA_PORT").getOrElse("2181").toInt
+    kafkaAddress = sys.env.get("KAFKA_ADDRESS").getOrElse("localhost")
+    kafkaPort = sys.env.get("KAFKA_PORT").getOrElse("2181").toInt
     kafkaTopic = sys.env.get("KAFKA_TOPIC").getOrElse("ratings")
     dbPort = sys.env.get("MONGO_PORT").getOrElse("27017").toInt
     dbKeySpace = sys.env.get("MONGO_KEYSPACE").getOrElse("newsForYou")
     useDummyDataOpt = sys.env.get("USE_DUMMY_DATA")
     sparkUrl = "spark://" + sparkAddress + ":" + sparkPort
-    zkUrl = zkAddress+":"+zkPort
-    dbUrl = "mongodb://" + dbAddress + ":" + dbPort + "/" + dbKeySpace
+    kafkaUrl = kafkaAddress+":"+kafkaPort
+    mongoUrl = "mongodb://" + dbAddress + ":" + dbPort + "/" + dbKeySpace
 
     println("Spark expected at: " + sparkUrl)
-    println("Zookeeper expected at: " + zkUrl)
-    println("Mongo expected at: " + dbUrl)
+    println("Kafka expected at: " + kafkaUrl)
+    println("Mongo expected at: " + mongoUrl)
 
     ss = SparkSession
       .builder()
-      .master("local")
-      .appName("streaming_recommender")
-      .config("spark.mongodb.input.uri", dbUrl + ".articleFactors")
-      .config("spark.mongodb.output.uri", dbUrl + ".recommendations")
+      .master(sparkUrl)
+      .appName("recommender")
+      .config("spark.mongodb.input.uri", mongoUrl + ".articleFactors")
+      .config("spark.mongodb.output.uri", mongoUrl + ".recommendations")
       .getOrCreate()
     sc = ss.sparkContext
 
-    val Array(zkQuorum, group, topics, numThreads) = Array(zkUrl,"ratingConsumer",kafkaTopic,"1")
+    val Array(zkQuorum, group, topics, numThreads) = Array(kafkaUrl,"ratingConsumer",kafkaTopic,"1")
     val ssc = new StreamingContext(sc, Seconds(2))
     ssc.checkpoint("checkpoint")
 
@@ -84,7 +84,7 @@ object StreamingRecommender extends App {
 
   def loadModel(): ALSModel = {
 
-    var inputCollection = dbUrl + ".articleFactors"
+    var inputCollection = mongoUrl + ".articleFactors"
     var temp = MongoSpark.load(sc,ReadConfig(Map("spark.mongodb.input.uri" -> inputCollection))).toDF.rdd
     var factors = temp.map(row => (row.getAs[Long]("articleId"),row.getAs[Array[Double]]("latentFactors")))
 
@@ -95,7 +95,7 @@ object StreamingRecommender extends App {
     val si = a.split(",")
     val userId = si(0).toLong
     val articleId = si(1).toLong
-    var inputCollection = dbUrl + ".recommendations"
+    var inputCollection = mongoUrl + ".recommendations"
     var temp = MongoSpark.load(sc,ReadConfig(Map("spark.mongodb.input.uri" -> inputCollection))).toDF
     val rows = temp.filter(row => row.getAs[Long]("userid") == userId )
 
@@ -118,7 +118,7 @@ object StreamingRecommender extends App {
   }
 
   def loadRatings(userId : Long): RDD[Rating] ={
-    var inputCollection = dbUrl + ".ratings"
+    var inputCollection = mongoUrl + ".ratings"
     var temp = MongoSpark.load(sc,ReadConfig(Map("spark.mongodb.input.uri" -> inputCollection))).toDF
     val rows = temp.filter(row => row.getAs[Long]("userId") == userId )
     rows.rdd.map(r=>Rating(r.getAs[Long]("userId"),r.getAs[Long]("articleId"),r.getAs[Double]("rating")))
