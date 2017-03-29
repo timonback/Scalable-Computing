@@ -1,5 +1,6 @@
 import com.mongodb.spark.MongoSpark
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 import scalaj.http.{Http, HttpResponse}
@@ -42,11 +43,13 @@ object Fetcher {
       val idLambdaFunction = org.apache.spark.sql.functions.udf((url: String) => url.hashCode)
       val articles: DataFrame = articlesUnfixed.withColumn("id", idLambdaFunction(articlesUnfixed("web_url")))
 
+      articles.printSchema()
+
       val count = articles.count().toInt
       val countStored = (count * 0.75).toInt
       val countStream = count - countStored
-      val storedArticles = articles.limit(countStored)
-      val streamArticles = articles.limit(countStream)
+      val storedArticles = articles.sort(asc("pub_date")).limit(countStored)
+      val streamArticles = articles.sort(desc("pub_date")).limit(countStream)
 
       MongoSpark.write(storedArticles).option("collection", "articles").mode("append").save()
       MongoSpark.write(streamArticles).option("collection", "stream").mode("append").save()
