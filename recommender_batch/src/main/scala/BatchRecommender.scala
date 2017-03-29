@@ -34,7 +34,6 @@ object BatchRecommender extends App{
     println("Spark expected at: " + sparkUrl)
     println("Mongo expected at: " + mongoUrl)
 
-
     val ss = SparkSession
       .builder()
       .master(sparkUrl)
@@ -44,13 +43,11 @@ object BatchRecommender extends App{
       .getOrCreate()
     sc = ss.sparkContext
 
-
-	var jarFileEnv = sys.env.get("SPARK_JAR").getOrElse("")
-	println("Add jar file(s) to spark: " + jarFileEnv)
-	for(jarFile <- jarFileEnv.split(",")) {
-		sc.addJar(jarFile)
-	}
-
+    var jarFileEnv = sys.env.get("SPARK_JAR").getOrElse("")
+    println("Add jar file(s) to spark: " + jarFileEnv)
+    for(jarFile <- jarFileEnv.split(",")) {
+      sc.addJar(jarFile)
+    }
 
     var ratingsRDD : RDD[Rating] =  null
     if(useDummyDataOpt.isEmpty) {
@@ -80,7 +77,7 @@ object BatchRecommender extends App{
     // Learn Model
     val numIterations = 12
     val numLatentFactors = 35
-    val numArticles = ratingsRDD.groupBy(_.article).map(a=>a._1).collect()
+    val numArticles = ratingsRDD.groupBy(_.article).map(a=>a._1)
     val regularization = 0.1
     val numPredictions = 10
     val model : ALSModel = learnModel(ratingsRDD,numIterations,numLatentFactors,numArticles,regularization)
@@ -97,7 +94,7 @@ object BatchRecommender extends App{
     sc.stop()
   }
 
-  def learnModel(ratings: RDD[Rating], numIterations: Int, numLatentFactors : Int, numArticles : Array[Long], regularization: Double): ALSModel = {
+  def learnModel(ratings: RDD[Rating], numIterations: Int, numLatentFactors : Int, numArticles : RDD[Long], regularization: Double): ALSModel = {
     // Initialize User and Article Factors
     var userFactors: RDD[(Long, Array[Double])] = null
     var articleFactors: RDD[(Long, Array[Double])] = initialize(numArticles, numLatentFactors)
@@ -215,17 +212,16 @@ object BatchRecommender extends App{
     new DenseMatrix(dm.rows,dm.cols,dm.data)
   }
 
-  def initialize( numArticles : Array[Long], numLatentFactors : Int) : RDD[(Long, Array[Double])] = {
+  def initialize( numArticles : RDD[Long], numLatentFactors : Int) : RDD[(Long, Array[Double])] = {
     var result: Array[(Long, Array[Double])] = Array()
-    (numArticles).foreach( x => {
+    (numArticles).map( x => {
       var array : Array[Double] = Array()
       for (y <- 0 until numLatentFactors) {
         val r = scala.util.Random
         array +:= r.nextInt(10)*.1
       }
-      result +:= (x,array)
+      (x,array)
     })
-    sc.parallelize(result)
   }
 
   def recommendArticles(number: Int, model: ALSModel,ratings : RDD[Rating]) : RDD[(Long,Array[Long])] = {
@@ -266,7 +262,7 @@ object BatchRecommender extends App{
     val entries  = sc.parallelize(array.map(a=> a._2.zipWithIndex.map(b=> MatrixEntry(a._1,b._2,b._1))).reduce(_++_))
 
     val rows = array.keyBy(_._1).map(_._1).max()+1
-    val cols = array.collect()(0)._2.length
+    val cols = array.first()._2.length
 
     val coordMat : CoordinateMatrix = new CoordinateMatrix(entries,rows,cols)
     coordMat.toBlockMatrix()

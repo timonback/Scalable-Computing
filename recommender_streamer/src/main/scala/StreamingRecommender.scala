@@ -127,7 +127,6 @@ object StreamingRecommender extends App {
 
     val numIterations = 12
     val numLatentFactors = 35
-    val numArticles = ratings.groupBy(_.article).map(a => a._1).collect()
     val regularization = 0.1
     val numPredictions = 10
 

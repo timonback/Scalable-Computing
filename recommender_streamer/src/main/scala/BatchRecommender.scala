@@ -133,17 +133,16 @@ object BatchRecommender {
     new DenseMatrix(dm.rows, dm.cols, dm.data)
   }
 
-  def initialize(numArticles: Array[Long], numLatentFactors: Int): RDD[(Long, Array[Double])] = {
+  def initialize( numArticles : RDD[Long], numLatentFactors : Int) : RDD[(Long, Array[Double])] = {
     var result: Array[(Long, Array[Double])] = Array()
-    (numArticles).foreach(x => {
-      var array: Array[Double] = Array()
+    (numArticles).map( x => {
+      var array : Array[Double] = Array()
       for (y <- 0 until numLatentFactors) {
         val r = scala.util.Random
-        array +:= r.nextInt(10) * .1
+        array +:= r.nextInt(10)*.1
       }
-      result +:= (x, array)
+      (x,array)
     })
-    sc.parallelize(result)
   }
 
   def recommendArticles(number: Int, model: ALSModel, ratings: RDD[Rating]): RDD[(Long, Array[Long])] = {
@@ -184,7 +183,7 @@ object BatchRecommender {
     val entries = sc.parallelize(array.map(a => a._2.zipWithIndex.map(b => MatrixEntry(a._1, b._2, b._1))).reduce(_ ++ _))
 
     val rows = array.keyBy(_._1).map(_._1).max() + 1
-    val cols = array.collect()(0)._2.length
+    val cols = array.first()._2.length
 
     val coordMat: CoordinateMatrix = new CoordinateMatrix(entries, rows, cols)
     coordMat.toBlockMatrix()
