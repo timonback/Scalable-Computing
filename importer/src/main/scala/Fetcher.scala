@@ -45,8 +45,8 @@ object Fetcher {
       val count = articles.count().toInt
       val countStored = (count * 0.75).toInt
       val countStream = count - countStored
-      val storedArticles = articles.limit(countStored)
-      val streamArticles = articles.limit(countStream)
+      val storedArticles = articles.sort("{$natural: 1}").limit(countStored)
+      val streamArticles = articles.sort("{$natural: -1}").limit(countStream)
 
       MongoSpark.write(storedArticles).option("collection", "articles").mode("append").save()
       MongoSpark.write(streamArticles).option("collection", "stream").mode("append").save()
