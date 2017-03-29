@@ -15,8 +15,8 @@ object Fetcher {
       .builder()
       .master("local")
       .appName("fetcher")
-      .config("spark.mongodb.input.uri", "mongodb://"+dbAddress+":"+dbPort+"/"+dbKeySpace+".articles")
-      .config("spark.mongodb.output.uri", "mongodb://"+dbAddress+":"+dbPort+"/"+dbKeySpace+".articles")
+      .config("spark.mongodb.input.uri", "mongodb://" + dbAddress + ":" + dbPort + "/" + dbKeySpace + ".articles")
+      .config("spark.mongodb.output.uri", "mongodb://" + dbAddress + ":" + dbPort + "/" + dbKeySpace + ".articles")
       .getOrCreate()
 
     val importApiKey = sys.env.get("IMPORT_API_KEY").getOrElse("6abaec279f9d4c4dad5459690c7b4563")
@@ -29,8 +29,8 @@ object Fetcher {
     var httpResponse: HttpResponse[String] = null
 
     do {
-      println("Downloading "+year+"-"+month)
-    
+      println("Downloading " + year + "-" + month)
+
       httpResponse = Http("https://api.nytimes.com/svc/archive/v1/" + year + "/" + month + ".json").param("api-key", importApiKey).asString
 
       val rdd: RDD[String] = spark.sparkContext.makeRDD(httpResponse.body :: Nil)
@@ -38,7 +38,6 @@ object Fetcher {
       val df: DataFrame = spark.read.json(rdd)
       val articleLambdaFunction = org.apache.spark.sql.functions.explode(df.col("response.docs")).as("articles")
       val articlesUnfixed: DataFrame = df.select(articleLambdaFunction).selectExpr("articles.*")
-      //println(articlesUnfixed.printSchema())
 
       val idLambdaFunction = org.apache.spark.sql.functions.udf((url: String) => url.hashCode)
       val articles: DataFrame = articlesUnfixed.withColumn("id", idLambdaFunction(articlesUnfixed("web_url")))
@@ -51,10 +50,6 @@ object Fetcher {
 
       MongoSpark.write(storedArticles).option("collection", "articles").mode("append").save()
       MongoSpark.write(streamArticles).option("collection", "stream").mode("append").save()
-
-      // DEBUG
-      // val articlesIn = MongoSpark.load(spark).select("articles")
-      // println(articlesIn.select("articles.web_url").count() + " articles currently in collection.")
 
       month -= 1
 
