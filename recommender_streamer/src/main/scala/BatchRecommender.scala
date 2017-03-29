@@ -15,20 +15,6 @@ case class Rating(user: Long, article: Long, rating: Double)
 object BatchRecommender {
   var sc: SparkContext = _
 
-  def learnModel(ratings: RDD[Rating], numIterations: Int, numLatentFactors: Int, numArticles: Array[Long], regularization: Double): ALSModel = {
-    // Initialize User and Article Factors
-    var userFactors: RDD[(Long, Array[Double])] = null
-    var articleFactors: RDD[(Long, Array[Double])] = initialize(numArticles, numLatentFactors)
-
-    // Learn Model
-    for (i <- 0 until numIterations) {
-      userFactors = alsStep(ratings, numLatentFactors, regularization, articleFactors, false)
-      articleFactors = alsStep(ratings, numLatentFactors, regularization, userFactors, true)
-    }
-
-    ALSModel(userFactors, articleFactors)
-  }
-
   def alsStep(ratings: RDD[Rating], numLatentFactors: Int, regularization: Double, factors: RDD[(Long, Array[Double])], firstStage: Boolean): RDD[(Long, Array[Double])] = {
     var ratingsBy: RDD[(Long, Rating)] = null
     if (firstStage) {
@@ -85,7 +71,6 @@ object BatchRecommender {
   def storeRecommendations(ss: SparkSession, recommendations: RDD[(Long, Array[Long])], append: Boolean) = {
     val df: DataFrame = ss.createDataFrame(recommendations)
     val lpDF = df.withColumnRenamed("_1", "userid").withColumnRenamed("_2", "recommendations")
-    lpDF.printSchema()
     var a = MongoSpark.write(lpDF).option("collection", "recommendations")
     if (append) {
       a = a.mode(SaveMode.Append)
@@ -195,7 +180,6 @@ object BatchRecommender {
 
     val df: DataFrame = ss.createDataFrame(factors)
     val lpDF = df.withColumnRenamed("_1", "articleId").withColumnRenamed("_2", "latentFactors")
-    lpDF.printSchema()
     var a = MongoSpark.write(lpDF).option("collection", "articleFactors")
     a = a.mode(SaveMode.Overwrite)
     a.save()

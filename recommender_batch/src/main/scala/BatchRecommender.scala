@@ -1,13 +1,12 @@
 package recommender
 
 import breeze.linalg._
-import breeze.optimize.linear.PowerMethod.BDM
 import com.mongodb.spark.MongoSpark
 import org.apache.spark.SparkContext
+import org.apache.spark.mllib.linalg.distributed.{BlockMatrix, CoordinateMatrix, MatrixEntry}
+import org.apache.spark.mllib.linalg.{DenseMatrix, DenseVector}
 import org.apache.spark.rdd.RDD
-import org.apache.spark.mllib.linalg.distributed.{BlockMatrix, CoordinateMatrix, MatrixEntry, _}
-import org.apache.spark.sql.{DataFrame, SparkSession,SaveMode}
-import org.apache.spark.mllib.linalg.{DenseMatrix, DenseVector, Matrices, Vector}
+import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 
 
 case class ALSModel (userFactors: RDD[(Long,Array[Double])], articleFactors: RDD[(Long,Array[Double])])
@@ -33,6 +32,7 @@ object BatchRecommender extends App{
 
     println("Spark expected at: " + sparkUrl)
     println("Mongo expected at: " + mongoUrl)
+
 
     val ss = SparkSession
       .builder()
@@ -64,7 +64,7 @@ object BatchRecommender extends App{
         if(r2.nextInt(100) >= 80) {
         for( article <- 0 to 100-1){
           val r = scala.util.Random
-          if(r.nextInt(100) >= 98) {
+          if(r.nextInt(100) >= 90) {
             ratings +:= Rating(user,article,r.nextInt(10)*.1)
           }
         }
@@ -164,7 +164,6 @@ object BatchRecommender extends App{
   def storeRecommendations(ss: SparkSession,recommendations : RDD[(Long,Array[Long])],append:Boolean) = {
     val df : DataFrame =  ss.createDataFrame( recommendations )
     val lpDF = df.withColumnRenamed("_1", "userid").withColumnRenamed("_2", "recommendations")
-    lpDF.printSchema()
     var a = MongoSpark.write(lpDF).option("collection", "recommendations")
     if(append){
       a = a.mode(SaveMode.Append)
@@ -274,7 +273,6 @@ object BatchRecommender extends App{
 
     val df : DataFrame =  ss.createDataFrame( factors )
     val lpDF = df.withColumnRenamed("_1", "articleId").withColumnRenamed("_2", "latentFactors")
-    lpDF.printSchema()
     var a = MongoSpark.write(lpDF).option("collection", "articleFactors")
     a = a.mode(SaveMode.Overwrite)
     a.save()
