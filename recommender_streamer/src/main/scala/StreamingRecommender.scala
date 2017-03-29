@@ -53,6 +53,12 @@ object StreamingRecommender extends App {
       .config("spark.mongodb.output.uri", mongoUrl + ".recommendations")
       .getOrCreate()
     sc = ss.sparkContext
+    
+    var jarFileEnv = sys.env.get("SPARK_JAR").getOrElse("")
+	  println("Add jar file(s) to spark: " + jarFileEnv)
+	  for(jarFile <- jarFileEnv.split(",")) {
+		  sc.addJar(jarFile)
+	  }
 
     val Array(zkQuorum, group, topics, numThreads) = Array(kafkaUrl, "ratingConsumer", kafkaTopic, "1")
     val ssc = new StreamingContext(sc, Seconds(2))
