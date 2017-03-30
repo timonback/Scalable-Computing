@@ -33,7 +33,6 @@ object BatchRecommender extends App{
     println("Spark expected at: " + sparkUrl)
     println("Mongo expected at: " + mongoUrl)
 
-
     val ss = SparkSession
       .builder()
       .master(sparkUrl)
@@ -70,12 +69,11 @@ object BatchRecommender extends App{
         }
         }
       }
-
       ratingsRDD = sc.parallelize(ratings)
     }
 
     // Learn Model
-    val numIterations = 12
+    val numIterations = 3
     val numLatentFactors = 35
     val numArticles = ratingsRDD.groupBy(_.article).map(a=>a._1)
     val regularization = 0.1
@@ -86,7 +84,7 @@ object BatchRecommender extends App{
     val recommendations = recommendArticles(numPredictions, model,ratingsRDD)
 
     // Store recommendations
-    storeRecommendations(ss,recommendations,false)
+    storeRecommendations(ss,recommendations)
 
     // Store model in DB
     storeFactorsInDB(model.articleFactors,ss,mongoUrl)
@@ -161,16 +159,10 @@ object BatchRecommender extends App{
       .map(a=>a._2)
   }
 
-  def storeRecommendations(ss: SparkSession,recommendations : RDD[(Long,Array[Long])],append:Boolean) = {
+  def storeRecommendations(ss: SparkSession,recommendations : RDD[(Long,Array[Long])]) = {
     val df : DataFrame =  ss.createDataFrame( recommendations )
     val lpDF = df.withColumnRenamed("_1", "userid").withColumnRenamed("_2", "recommendations")
-    var a = MongoSpark.write(lpDF).option("collection", "recommendations")
-    if(append){
-      a = a.mode(SaveMode.Append)
-    }else{
-      a = a.mode(SaveMode.Overwrite)
-    }
-    a.save()
+    MongoSpark.write(lpDF).option("collection", "recommendations").mode(SaveMode.Overwrite).save()
   }
 
   def dotSelfTransposeSelf(factors : RDD[(Long,(Array[Double],Rating) )], firstStage:Boolean) : RDD[(Long,Array[Array[Double]])] = {
@@ -213,7 +205,7 @@ object BatchRecommender extends App{
 
   def initialize( numArticles : RDD[Long], numLatentFactors : Int) : RDD[(Long, Array[Double])] = {
     var result: Array[(Long, Array[Double])] = Array()
-    (numArticles).map( x => {
+    numArticles.map( x => {
       var array : Array[Double] = Array()
       for (y <- 0 until numLatentFactors) {
         val r = scala.util.Random
@@ -231,7 +223,6 @@ object BatchRecommender extends App{
 
     // Remove already rated
     val ratingsMatrix : BlockMatrix = new CoordinateMatrix(ratings.map(a=> MatrixEntry(a.user,a.article,Double.PositiveInfinity)),c.numRows(),c.numCols()).toBlockMatrix()
-
     c = c.subtract(ratingsMatrix)
 
     var lengths : RDD[Array[Double]] = c.toIndexedRowMatrix().rows.map(a=> a.vector.toArray)
@@ -258,7 +249,7 @@ object BatchRecommender extends App{
   }
 
   def vectorsToBlockMatrix(array : RDD[(Long,Array[Double])]) : BlockMatrix = {
-    val entries  = sc.parallelize(array.map(a=> a._2.zipWithIndex.map(b=> MatrixEntry(a._1,b._2,b._1))).reduce(_++_))
+    val entries  = array.flatMap(a=> a._2.zipWithIndex.map(b=> MatrixEntry(a._1,b._2,b._1)))
 
     val rows = array.keyBy(_._1).map(_._1).max()+1
     val cols = array.first()._2.length
@@ -277,5 +268,4 @@ object BatchRecommender extends App{
     a = a.mode(SaveMode.Overwrite)
     a.save()
   }
-
 }
