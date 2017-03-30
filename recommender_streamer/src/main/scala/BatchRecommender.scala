@@ -2,12 +2,12 @@ package recommender
 
 import breeze.linalg._
 import com.mongodb.spark.MongoSpark
+import com.mongodb.spark.sql.fieldTypes.ObjectId
 import org.apache.spark.SparkContext
 import org.apache.spark.mllib.linalg.distributed.{BlockMatrix, CoordinateMatrix, MatrixEntry}
 import org.apache.spark.mllib.linalg.{DenseMatrix, DenseVector}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
-import com.mongodb.spark.sql.fieldTypes.ObjectId
 
 case class ALSModel(userFactors: RDD[(Long, Seq[Double])], articleFactors: RDD[(Long, Seq[Double])])
 
@@ -19,7 +19,7 @@ object BatchRecommender {
   def alsStep(ratings: RDD[Rating], numLatentFactors: Int, regularization: Double, factors: RDD[(Long, Seq[Double])]): RDD[(Long, Seq[Double])] = {
     var ratingsBy: RDD[(Long, Rating)] = null
     
-    ratingsBy = ratings.keyBy(_.user)
+    ratingsBy = ratings.keyBy(_.article)
     
     val ratingsWithFactors = factors.join(ratingsBy)
 
@@ -119,9 +119,7 @@ object BatchRecommender {
 
     var lengths: RDD[Seq[Double]] = c.toIndexedRowMatrix().rows.map(a => a.vector.toArray)
 
-    var lengths2 = lengths.map(a => getLargestN(a.zipWithIndex.map(a => (a._1, a._2.toLong)), number)).zipWithIndex().map(a => (a._2, a._1)).filter(a => a._2.last >= 0)
-
-    lengths2
+    lengths.map(a => getLargestN(a.zipWithIndex.map(a => (a._1, a._2.toLong)), number)).zipWithIndex().map(a => (a._2, a._1)).filter(a => a._2.last >= 0)
   }
 
   def getLargestN(array: Seq[(Double, Long)], number: Int): Array[Long] = {

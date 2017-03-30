@@ -54,26 +54,26 @@ object StreamingRecommender extends App {
       .getOrCreate()
     sc = ss.sparkContext
 
-	var jarFileEnv = sys.env.get("SPARK_JAR").getOrElse("")
-	  println("Add jar file(s) to spark: " + jarFileEnv)
-	  for(jarFile <- jarFileEnv.split(",")) {
-		  sc.addJar(jarFile)
-	  }
+    var jarFileEnv = sys.env.get("SPARK_JAR").getOrElse("")
+    println("Add jar file(s) to spark: " + jarFileEnv)
+    for(jarFile <- jarFileEnv.split(",")) {
+      sc.addJar(jarFile)
+    }
 
-	val Array(zkQuorum, group, topics, numThreads) = Array(kafkaUrl, "ratingConsumer", kafkaTopic, "1")
-	val ssc = new StreamingContext(sc, Seconds(2))
-	ssc.checkpoint("checkpoint")
+    val Array(zkQuorum, group, topics, numThreads) = Array(kafkaUrl, "ratingConsumer", kafkaTopic, "1")
+    val ssc = new StreamingContext(sc, Seconds(2))
+    ssc.checkpoint("checkpoint")
 
-	val topicMap = topics.split(",").map((_, numThreads.toInt)).toMap
+    val topicMap = topics.split(",").map((_, numThreads.toInt)).toMap
 
-	val lines = KafkaUtils.createStream(ssc, zkQuorum, group, topicMap).map(_._2)
-	val words = lines.flatMap(_.split(" "))
+    val lines = KafkaUtils.createStream(ssc, zkQuorum, group, topicMap).map(_._2)
+    val words = lines.flatMap(_.split(" "))
 
-	lines.map(processLine)
-	lines.print()
+    lines.map(processLine)
+    lines.print()
 
-	ssc.start()
-	ssc.awaitTermination()
+    ssc.start()
+    ssc.awaitTermination()
 
     sc.stop()
   }
