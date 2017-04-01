@@ -54,6 +54,12 @@ object StreamingRecommender extends App {
       .getOrCreate()
     sc = ss.sparkContext
 
+    var jarFileEnv = sys.env.get("SPARK_JAR").getOrElse("")
+    println("Add jar file(s) to spark: " + jarFileEnv)
+    for(jarFile <- jarFileEnv.split(",")) {
+      sc.addJar(jarFile)
+    }
+
     val Array(zkQuorum, group, topics, numThreads) = Array(kafkaUrl, "ratingConsumer", kafkaTopic, "1")
     val ssc = new StreamingContext(sc, Seconds(2))
     ssc.checkpoint("checkpoint")
@@ -76,7 +82,7 @@ object StreamingRecommender extends App {
 
     var inputCollection = mongoUrl + ".articleFactors"
     var temp = MongoSpark.load(sc, ReadConfig(Map("spark.mongodb.input.uri" -> inputCollection))).toDF.rdd
-    var factors = temp.map(row => (row.getAs[Long]("articleId"), row.getAs[Array[Double]]("latentFactors")))
+    var factors = temp.map(row => (row.getAs[Long]("articleId"), row.getAs[Seq[Double]]("latentFactors")))
 
     ALSModel(null, factors)
   }
@@ -91,18 +97,17 @@ object StreamingRecommender extends App {
 
     if (rows.count() == 1) {
       val row = rows.first()
-      val newArray: Array[Long] = row.getAs[Seq[Long]]("recommendations").filter(a => a != articleId).toArray
+      val newArray: Seq[Long] = row.getAs[Seq[Long]]("recommendations").filter(a => a != articleId).toArray
 
       // Update recommendations in DB
-      val newDocs = Seq((ObjectId(row.get(0).toString.substring(1, row.get(0).toString.length() - 1)), userId, newArray))
-
+      val objId = ObjectId(row.get(0).toString.substring(1, row.get(0).toString.length() - 1))
+      val newDocs = Seq((objId, userId, newArray))
       val df: DataFrame = ss.createDataFrame(newDocs)
       val lpDF = df.withColumnRenamed("_1", "_id").withColumnRenamed("_2", "userid").withColumnRenamed("_3", "recommendations")
-      lpDF.printSchema()
       MongoSpark.write(lpDF).option("collection", "recommendations").mode(SaveMode.Append).save()
 
       // Generate new recommendations
-      if (newArray.isEmpty) generateNewRatings(userId)
+      if (newArray.isEmpty) generateNewRecommendations(objId,userId)
     }
     a
   }
@@ -114,29 +119,26 @@ object StreamingRecommender extends App {
     rows.rdd.map(r => Rating(r.getAs[Long]("userId"), r.getAs[Long]("articleId"), r.getAs[Double]("rating")))
   }
 
-  def generateNewRatings(userId: Long): Unit = {
+  def generateNewRecommendations(objId : ObjectId, userId: Long): Unit = {
     var model = loadModel()
     val ratings = loadRatings(userId)
-    model = loadModel()
 
-    val numIterations = 12
     val numLatentFactors = 35
-    val numArticles = ratings.groupBy(_.article).map(a => a._1).collect()
     val regularization = 0.1
     val numPredictions = 10
 
-    val recommendations = recommendArticlesForNewUsers(ratings, numIterations, numLatentFactors, regularization, model, numPredictions)
-    BatchRecommender.storeRecommendations(ss, recommendations, true)
+    val recommendations = recommendArticlesForNewUsers(ratings, numLatentFactors, regularization, model, numPredictions)
+    BatchRecommender.storeRecommendations(objId,ss, recommendations)
   }
 
-  def recommendArticlesForNewUsers(ratings: RDD[Rating], numIterations: Int, numLatentFactors: Int, regularization: Double, model: ALSModel, number: Int): RDD[(Long, Array[Long])] = {
+  def recommendArticlesForNewUsers(ratings: RDD[Rating], numLatentFactors: Int, regularization: Double, model: ALSModel, number: Int): RDD[(Long, Array[Long])] = {
     // Initialize User Factors
-    var userFactors: RDD[(Long, Array[Double])] = null
+    var userFactors: RDD[(Long, Seq[Double])] = null
     // Learn Model
-    for (i <- 0 until numIterations) {
-      userFactors = BatchRecommender.alsStep(ratings, numLatentFactors, regularization, model.articleFactors, true)
-    }
+    userFactors = BatchRecommender.alsStep(ratings, numLatentFactors, regularization, model.articleFactors)
+
     var newModel = ALSModel(userFactors, model.articleFactors)
+
     // Recommend Articles
     BatchRecommender.recommendArticles(number, newModel, ratings)
   }
