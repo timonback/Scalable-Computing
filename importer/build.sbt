@@ -7,6 +7,8 @@ lazy val `importer` = (project in file("."))
   .enablePlugins(DockerPlugin)
   .enablePlugins(JavaAppPackaging)
 
+mainClass in (Compile, run) := Some("Fetcher")
+
 scalaVersion := "2.11.7"
 
 libraryDependencies ++= Seq(
