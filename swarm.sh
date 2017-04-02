@@ -23,7 +23,7 @@ sudo chgrp $USER /home/docker
 mkdir -p /home/docker/mongo /home/docker/mongo/data /home/docker/mongo/config
 
 #Add database --endpoint-mode dnsrr
-docker service create --name mongo -p 27017:27017 --replicas 2 --network services --mount type=bind,source=/home/docker/mongo/data,target=/data/db --mount type=bind,source=/home/docker/mongo/config,target=/data/configdb mongo mongod --replSet mongoReplica
+docker service create --name mongo -p 27017:27017 --replicas 1 --network services --mount type=bind,source=/home/docker/mongo/data,target=/data/db --mount type=bind,source=/home/docker/mongo/config,target=/data/configdb mongo mongod --replSet mongoReplica
 
 ##on first mongo node
 # docker exec -it mongo.*container-name* bash -c 'IP="$(hostname -i)"; echo "MasterIP: $IP"; mongo --eval "rs.initiate({ _id: \"mongoReplica\", members: [{ _id: 0, host: \"'$IP':27017\" }], settings: { getLastErrorDefaults: { w: \"majority\" }}})"'
@@ -35,10 +35,10 @@ docker service create --name mongo -p 27017:27017 --replicas 2 --network service
 
 #Add a zookeeper on a master nodes
 # bin/zkCli.sh -server localhost:2181 ls /
-docker service create --name zookeeper -p 2181:2181 --replicas 1 --constraint 'node.role == manager' --network services wurstmeister/zookeeper
+docker service create --name zookeeper --hostname zookeeper -p 2181:2181 --replicas 1 --constraint 'node.role == manager' --network services wurstmeister/zookeeper
 
 #Add Kafka
-# bin/kafka-topics.sh --zookeeper zookeeper:2181 --list
+# docker exec -it -rm wurstmeister/kafka bin/kafka-topics.sh --zookeeper zookeeper:2181 --list
 # bin/kafka-topics.sh --zookeeper zookeeper:2181 --create --replication-factor 1 --partitions 1 --topic helloworld
 docker service create --name kafka -p 9092:9092 -e KAFKA_PORT=9092 -e KAFKA_ADVERTISED_PORT=9092 -e KAFKA_CREATE_TOPICS=ratings:1:1 -e KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092 -e KAFKA_ZOOKEEPER_CONNECT=tasks.zookeeper:2181 -e "HOSTNAME_COMMAND=ip r | awk '{ ip[\$3] = \$NF } END { print ( ip[\"eth0\"] ) }'" --replicas 1 --network services wurstmeister/kafka
 
@@ -46,7 +46,7 @@ docker service create --name kafka -p 9092:9092 -e KAFKA_PORT=9092 -e KAFKA_ADVE
 docker service create --name visualization -p 9000:9000 -e MONGO_ADDRESS=mongo --replicas 1 --network services timonback/newsforyou-visualization:latest
 
 #Add importer service (run every 24 hours)
-docker service create --name importer -e MONGO_ADDRESS=mongo --replicas 1 --network services --restart-delay 24h timonback/newsforyou-importer:latest
+docker service create --name importer -e MONGO_ADDRESS=mongo -e KAFKA_ADDRESS=kafka -e IMPORT_START_YEAR=2017 -e IMPORT_START_MONTH=3 --replicas 1 --network services --restart-delay 300h timonback/newsforyou-importer:latest
 
 #Add rating generator
 docker service create --name streamer -e MONGO_ADDRESS=mongo -e KAFKA_ADDRESS=kafka --replicas 1 --network services --restart-delay 24h timonback/newsforyou-streamer:latest
