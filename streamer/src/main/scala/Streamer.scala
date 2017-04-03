@@ -36,16 +36,24 @@ object Streamer {
     props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
       "org.apache.kafka.common.serialization.StringSerializer")
 
+    println("Starting stream...")
+
     articles.foreachPartition {
       partition =>
         val producer = new KafkaProducer[String, String](props)
 
+        println("Created producer")
+
         partition.foreach {
           article =>
+            println("Sending " + article.getInt(0))
             val rnd = scala.util.Random
             val message = new ProducerRecord[String, String](topic, null, article.getInt(0) + "," + rnd.nextInt(255) + "," + rnd.nextFloat)
             producer.send(message)
+            println("Sent " + article.getInt(0))
         }
     }
+
+    println("Finished stream")
   }
 }

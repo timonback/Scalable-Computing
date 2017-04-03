@@ -1,8 +1,11 @@
+import java.net.SocketTimeoutException
+
 import com.mongodb.spark.MongoSpark
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
+import scala.util.control.Breaks._
 import scalaj.http.{Http, HttpResponse}
 
 object Fetcher {
@@ -28,28 +31,37 @@ object Fetcher {
     var month = importStartMonth
     var httpResponse: HttpResponse[String] = null
 
-    do {
+    while (true) {
       println("Downloading " + year + "-" + month)
 
-      httpResponse = Http("https://api.nytimes.com/svc/archive/v1/" + year + "/" + month + ".json").param("api-key", importApiKey).asString
+      try {
+        httpResponse = Http("https://api.nytimes.com/svc/archive/v1/" + year + "/" + month + ".json").param("api-key", importApiKey).asString
 
-      val rdd: RDD[String] = spark.sparkContext.makeRDD(httpResponse.body :: Nil)
+        if (httpResponse.code != 200) {
+          break
+        }
 
-      val df: DataFrame = spark.read.json(rdd)
-      val articleLambdaFunction = org.apache.spark.sql.functions.explode(df.col("response.docs")).as("articles")
-      val articlesUnfixed: DataFrame = df.select(articleLambdaFunction).selectExpr("articles.*")
+        val rdd: RDD[String] = spark.sparkContext.makeRDD(httpResponse.body :: Nil)
 
-      val idLambdaFunction = org.apache.spark.sql.functions.udf((url: String) => url.hashCode)
-      val articles: DataFrame = articlesUnfixed.withColumn("id", idLambdaFunction(articlesUnfixed("web_url")))
+        val df: DataFrame = spark.read.json(rdd)
+        val articleLambdaFunction = org.apache.spark.sql.functions.explode(df.col("response.docs")).as("articles")
+        val articlesUnfixed: DataFrame = df.select(articleLambdaFunction).selectExpr("articles.*")
 
-      val count = articles.count().toInt
-      val countStored = (count * 0.75).toInt
-      val countStream = count - countStored
-      val storedArticles = articles.sort(asc("pub_date")).limit(countStored)
-      val streamArticles = articles.sort(desc("pub_date")).limit(countStream)
+        val idLambdaFunction = org.apache.spark.sql.functions.udf((url: String) => url.hashCode)
+        val articles: DataFrame = articlesUnfixed.withColumn("id", idLambdaFunction(articlesUnfixed("web_url")))
 
-      MongoSpark.write(storedArticles).option("collection", "articles").mode("append").save()
-      MongoSpark.write(streamArticles).option("collection", "stream").mode("append").save()
+        val count = articles.count().toInt
+        val countStored = (count * 0.75).toInt
+        val countStream = count - countStored
+        val storedArticles = articles.sort(asc("pub_date")).limit(countStored)
+        val streamArticles = articles.sort(desc("pub_date")).limit(countStream)
+
+        MongoSpark.write(storedArticles).option("collection", "articles").mode("append").save()
+        MongoSpark.write(streamArticles).option("collection", "stream").mode("append").save()
+      } catch {
+        case stoe: SocketTimeoutException =>
+          println("Exception: socket timed out")
+      }
 
       month -= 1
 
@@ -58,6 +70,5 @@ object Fetcher {
         month = 12
       }
     }
-    while (httpResponse.code == 200)
   }
 }
