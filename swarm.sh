@@ -18,15 +18,14 @@ docker network create --driver overlay services
 
 #preparation before starting the images
 sudo mkdir -p /vol
-sudo chown $USER /vol
-sudo chgrp $USER /vol
+sudo chown $USER:$USER /vol
 mkdir -p /vol/mongo /vol/mongo/data /vol/mongo/config
 
 #Add database --endpoint-mode dnsrr
 docker service create --name mongo -p 27017:27017 --replicas 2 --network services --mount type=bind,source=/vol/mongo/data,target=/data/db --mount type=bind,source=/vol/mongo/config,target=/data/configdb mongo mongod --replSet mongoReplica
 
 ##on first mongo node
-# docker exec -it mongo.*container-name* bash -c 'IP="$(hostname -i)"; echo "MasterIP: $IP"; mongo --eval "rs.initiate({ _id: \"mongoReplica\", members: [{ _id: 0, host: \"'$IP':27017\" }], settings: { getLastErrorDefaults: { w: \"majority\" }}})"'
+# docker exec -it mongo.*container-name* bash -c 'IP="$(hostname -i)"; echo "MasterIP: $IP"; mongo --eval "rs.initiate({ _id: \"mongoReplica\", members: [{ _id: 0, host: \""$IP":27017\" }], settings: { getLastErrorDefaults: { w: \"majority\" }}})"'
 
 ## on all other nodes
 # docker exec -it mongo.*container-name* bash -c 'echo -n "Enter ip of master [ENTER]: "; read IP; mongo --eval "rs.add(\"'$IP'\")"'
